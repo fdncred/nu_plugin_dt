@@ -1,0 +1,22 @@
+[package]
+name = "nu_plugin_dt"
+version = "0.1.0"
+authors = ["Darren Schroeder <343840+fdncred@users.noreply.github.com>"]
+edition = "2021"
+description = "a nushell plugin called dt"
+repository = "https://github.com/fdncred/nu_plugin_dt"
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+jiff = { version = "0.1.0", features = ["logging", "serde"] }
+# for local development, you can use a path dependency
+nu-plugin = { path = "../nushell/crates/nu-plugin", version = "0.95.1" }
+nu-protocol = { path = "../nushell/crates/nu-protocol", version = "0.95.1", features = ["plugin"] }
+# nu-plugin = "0.95.0"
+# nu-protocol = { version = "0.95.0", features = ["plugin"] }
+
+[dev-dependencies]
+nu-plugin-test-support = { path = "../nushell/crates/nu-plugin-test-support", version = "0.95.1" }
+# nu-plugin-test-support = { version = "0.95.0" }
