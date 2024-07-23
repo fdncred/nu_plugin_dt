@@ -9,7 +9,7 @@ impl SimplePluginCommand for Add {
     type Plugin = DtPlugin;
 
     fn name(&self) -> &str {
-        "add"
+        "dt add"
     }
 
     fn signature(&self) -> Signature {
@@ -20,11 +20,15 @@ impl SimplePluginCommand for Add {
                 "(FIXME) A demo parameter - your name",
             )
             .switch("shout", "(FIXME) Yell it instead", None)
-            .category(Category::Experimental)
+            .category(Category::Date)
     }
 
     fn usage(&self) -> &str {
         "(FIXME) help text for add"
+    }
+
+    fn search_terms(&self) -> Vec<&str> {
+        vec!["date", "time"]
     }
 
     fn examples(&self) -> Vec<Example> {

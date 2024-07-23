@@ -1,7 +1,7 @@
-use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
-use nu_protocol::{Category, Example, LabeledError, Signature, SyntaxShape, Value};
-
 use crate::DtPlugin;
+use jiff::Zoned;
+use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
+use nu_protocol::{Category, Example, LabeledError, Signature, Value};
 
 pub struct Now;
 
@@ -9,37 +9,27 @@ impl SimplePluginCommand for Now {
     type Plugin = DtPlugin;
 
     fn name(&self) -> &str {
-        "now"
+        "dt now"
     }
 
     fn signature(&self) -> Signature {
-        Signature::build(self.name())
-            .required(
-                "name",
-                SyntaxShape::String,
-                "(FIXME) A demo parameter - your name",
-            )
-            .switch("shout", "(FIXME) Yell it instead", None)
-            .category(Category::Experimental)
+        Signature::build(self.name()).category(Category::Date)
     }
 
     fn usage(&self) -> &str {
-        "(FIXME) help text for add"
+        "Return the current date and time"
+    }
+
+    fn search_terms(&self) -> Vec<&str> {
+        vec!["date", "time"]
     }
 
     fn examples(&self) -> Vec<Example> {
-        vec![
-            Example {
-                example: "add Ellie",
-                description: "Say hello to Ellie",
-                result: Some(Value::test_string("Hello, Ellie. How are you today?")),
-            },
-            Example {
-                example: "add --shout Ellie",
-                description: "Shout hello to Ellie",
-                result: Some(Value::test_string("HELLO, ELLIE. HOW ARE YOU TODAY?")),
-            },
-        ]
+        vec![Example {
+            example: "dt now",
+            description: "Return the current date and time",
+            result: None,
+        }]
     }
 
     fn run(
@@ -49,12 +39,10 @@ impl SimplePluginCommand for Now {
         call: &EvaluatedCall,
         _input: &Value,
     ) -> Result<Value, LabeledError> {
-        let name: String = call.req(0)?;
-        let mut greeting = format!("Hello, {name}. How are you today?");
-        if call.has_flag("shout")? {
-            greeting = greeting.to_uppercase();
-        }
-        Ok(Value::string(greeting, call.head))
+        let now = Zoned::now();
+        //FIXME: We can't return a Value::date because nushell's Value::Date is based on chrono's DateTime<FixedOffset>
+        // We'll need to add something like Value::Dt that is based on Jiff
+        Ok(Value::string(now.to_string(), call.head))
     }
 }
 

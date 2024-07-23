@@ -1,5 +1,6 @@
 mod commands;
 
+use commands::Dt;
 use nu_plugin::{Plugin, PluginCommand};
 
 pub use commands::Add;
@@ -21,6 +22,7 @@ impl Plugin for DtPlugin {
             Box::new(Add),
             Box::new(Now),
             Box::new(UtcNow),
+            Box::new(Dt),
         ]
     }
 }
