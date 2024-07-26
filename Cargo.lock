@@ -820,16 +820,16 @@ dependencies = [
 
 [[package]]
 name = "nu-ansi-term"
-version = "0.50.0"
+version = "0.50.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd2800e1520bdc966782168a627aa5d1ad92e33b984bf7c7615d31280c83ff14"
+checksum = "d4a28e057d01f97e61255210fcff094d74ed0466038633e95017f5beb68e4399"
 dependencies = [
- "windows-sys 0.48.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
 name = "nu-cmd-lang"
-version = "0.95.1"
+version = "0.96.1"
 dependencies = [
  "itertools",
  "nu-engine",
@@ -841,7 +841,7 @@ dependencies = [
 
 [[package]]
 name = "nu-derive-value"
-version = "0.95.1"
+version = "0.96.1"
 dependencies = [
  "convert_case",
  "proc-macro-error",
@@ -852,7 +852,7 @@ dependencies = [
 
 [[package]]
 name = "nu-engine"
-version = "0.95.1"
+version = "0.96.1"
 dependencies = [
  "log",
  "nu-glob",
@@ -863,11 +863,11 @@ dependencies = [
 
 [[package]]
 name = "nu-glob"
-version = "0.95.1"
+version = "0.96.1"
 
 [[package]]
 name = "nu-parser"
-version = "0.95.1"
+version = "0.96.1"
 dependencies = [
  "bytesize",
  "chrono",
@@ -882,7 +882,7 @@ dependencies = [
 
 [[package]]
 name = "nu-path"
-version = "0.95.1"
+version = "0.96.1"
 dependencies = [
  "dirs",
  "omnipath",
@@ -891,7 +891,7 @@ dependencies = [
 
 [[package]]
 name = "nu-plugin"
-version = "0.95.1"
+version = "0.96.1"
 dependencies = [
  "log",
  "nix",
@@ -905,7 +905,7 @@ dependencies = [
 
 [[package]]
 name = "nu-plugin-core"
-version = "0.95.1"
+version = "0.96.1"
 dependencies = [
  "interprocess",
  "log",
@@ -919,7 +919,7 @@ dependencies = [
 
 [[package]]
 name = "nu-plugin-engine"
-version = "0.95.1"
+version = "0.96.1"
 dependencies = [
  "log",
  "nu-engine",
@@ -934,7 +934,7 @@ dependencies = [
 
 [[package]]
 name = "nu-plugin-protocol"
-version = "0.95.1"
+version = "0.96.1"
 dependencies = [
  "bincode",
  "nu-protocol",
@@ -946,7 +946,7 @@ dependencies = [
 
 [[package]]
 name = "nu-plugin-test-support"
-version = "0.95.1"
+version = "0.96.1"
 dependencies = [
  "nu-ansi-term",
  "nu-cmd-lang",
@@ -962,7 +962,7 @@ dependencies = [
 
 [[package]]
 name = "nu-protocol"
-version = "0.95.1"
+version = "0.96.1"
 dependencies = [
  "brotli",
  "byte-unit",
@@ -992,7 +992,7 @@ dependencies = [
 
 [[package]]
 name = "nu-system"
-version = "0.95.1"
+version = "0.96.1"
 dependencies = [
  "chrono",
  "itertools",
@@ -1010,7 +1010,7 @@ dependencies = [
 
 [[package]]
 name = "nu-utils"
-version = "0.95.1"
+version = "0.96.1"
 dependencies = [
  "crossterm_winapi",
  "log",
@@ -1031,6 +1031,7 @@ dependencies = [
  "nu-plugin",
  "nu-plugin-test-support",
  "nu-protocol",
+ "nuon",
 ]
 
 [[package]]
@@ -1065,6 +1066,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c7398b9c8b70908f6371f47ed36737907c87c52af34c268fed0bf0ceb92ead9"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "nuon"
+version = "0.96.1"
+dependencies = [
+ "fancy-regex",
+ "nu-engine",
+ "nu-parser",
+ "nu-protocol",
+ "once_cell",
 ]
 
 [[package]]

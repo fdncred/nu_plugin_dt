@@ -1,3 +1,4 @@
+use super::utils::convert_nanos_to_datetime;
 use crate::DtPlugin;
 use jiff::Zoned;
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
@@ -21,7 +22,7 @@ impl SimplePluginCommand for UtcNow {
     }
 
     fn search_terms(&self) -> Vec<&str> {
-        vec!["date", "time"]
+        vec!["date", "time", "current"]
     }
 
     fn examples(&self) -> Vec<Example> {
@@ -35,7 +36,7 @@ impl SimplePluginCommand for UtcNow {
     fn run(
         &self,
         _plugin: &DtPlugin,
-        _engine: &EngineInterface,
+        engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: &Value,
     ) -> Result<Value, LabeledError> {
@@ -43,9 +44,8 @@ impl SimplePluginCommand for UtcNow {
         let nowutc = now
             .intz("UTC")
             .map_err(|err| LabeledError::new(err.to_string()))?;
-        //FIXME: We can't return a Value::date because nushell's Value::Date is based on chrono's DateTime<FixedOffset>
-        // We'll need to add something like Value::Dt that is based on Jiff
-        Ok(Value::string(nowutc.to_string(), call.head))
+        let nanos = nowutc.timestamp().as_nanosecond();
+        convert_nanos_to_datetime(nanos, engine, call.head, true)
     }
 }
 
