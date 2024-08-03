@@ -5,6 +5,7 @@ use nu_plugin::{Plugin, PluginCommand};
 
 pub use commands::Add;
 pub use commands::Now;
+pub use commands::Part;
 pub use commands::UtcNow;
 
 pub struct DtPlugin;
@@ -23,6 +24,7 @@ impl Plugin for DtPlugin {
             Box::new(Now),
             Box::new(UtcNow),
             Box::new(Dt),
+            Box::new(Part),
         ]
     }
 }

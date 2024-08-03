@@ -2,6 +2,7 @@
 mod add;
 mod dt;
 mod now;
+mod part;
 mod utcnow;
 mod utils;
 
@@ -9,5 +10,6 @@ mod utils;
 pub use add::Add;
 pub use dt::Dt;
 pub use now::Now;
+pub use part::Part;
 pub use utcnow::UtcNow;
 // pub use utils::convert_nanos_to_datetime;

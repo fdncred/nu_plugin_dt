@@ -1,5 +1,5 @@
+use super::utils::parse_datetime_string_add_nanos;
 use crate::DtPlugin;
-use jiff::{fmt::temporal::DateTimeParser, ToSpan, Zoned};
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
 use nu_protocol::{Category, Example, LabeledError, Signature, SyntaxShape, Value};
 
@@ -73,43 +73,17 @@ impl SimplePluginCommand for Add {
         match input {
             Value::Date { val, .. } => {
                 eprintln!("Date: {:?}", val);
-                return Err(LabeledError::new(
+                Err(LabeledError::new(
                     "Expected a date or datetime string".to_string(),
-                ));
+                ))
             }
             Value::String { val, .. } => {
                 // eprintln!("String: {:?}", val);
 
-                let cur_date_time_zone = Zoned::now();
-                let tz = cur_date_time_zone.time_zone().clone();
-                // let tz_name = tz.iana_name().unwrap_or_default();
-                // let dt_with_tz = format!("{}[{}]", val, tz_name);
-
-                // A parser can be created in a const context.
-                static PARSER: DateTimeParser = DateTimeParser::new();
-                // let date = PARSER
-                //     .parse_zoned(dt_with_tz)
-                //     .map_err(|err| LabeledError::new(err.to_string()))?;
-                // let zdt = date.with_time_zone(tz);
-
-                // Parse a civil datetime string into a civil::DateTime.
-                let date = PARSER
-                    .parse_datetime(val)
-                    .map_err(|err| LabeledError::new(err.to_string()))?;
-                // eprintln!("Date: {:?}", date);
-
-                let date_plus_duration = date
-                    .checked_add(duration_nanos.nanoseconds())
-                    .map_err(|err| LabeledError::new(err.to_string()))?;
-                // eprintln!("Date + Duration: {:?}", date_plus_duration);
-
-                let zdt = date_plus_duration
-                    .to_zoned(tz)
-                    .map_err(|err| LabeledError::new(err.to_string()))?;
-                // eprintln!("Zoned: {:?}", zdt);
+                let zdt = parse_datetime_string_add_nanos(val, duration_nanos)?;
                 Ok(Value::string(zdt.to_string(), call.head))
             }
-            _ => return Err(LabeledError::new("Expected a date or datetime".to_string())),
+            _ => Err(LabeledError::new("Expected a date or datetime".to_string())),
         }
     }
 }
