@@ -81,13 +81,13 @@ impl SimplePluginCommand for Part {
         } else {
             let unit: Vec<String> = call.rest(0)?;
             if unit.is_empty() {
-                return Err(LabeledError::new(
+                Err(LabeledError::new(
                     "please supply a unit name to extract from a date/datetime.",
-                ));
+                ))
             } else if unit.len() > 1 {
-                return Err(LabeledError::new(
+                Err(LabeledError::new(
                     "please supply only one unit name to extract from a date/datetime.",
-                ));
+                ))
             } else {
                 let datetime = match input {
                     Value::Date { val, .. } => {
@@ -98,8 +98,7 @@ impl SimplePluginCommand for Part {
                     }
                     Value::String { val, .. } => {
                         // eprintln!("Zoned: {:?}", zdt);
-                        let zdt = parse_datetime_string(val)?;
-                        zdt
+                        parse_datetime_string(val)?
                     }
                     _ => return Err(LabeledError::new("Expected a date or datetime".to_string())),
                 };
@@ -117,9 +116,9 @@ impl SimplePluginCommand for Part {
                     "hour" | "hh" => datetime.hour().into(),
                     "minute" | "mi" | "n" => datetime.minute().into(),
                     "second" | "ss" | "s" => datetime.second().into(),
-                    "millisecond" | "ms" => datetime.millisecond().into(),
-                    "microsecond" | "mcs" => datetime.microsecond().into(),
-                    "nanosecond" | "ns" => datetime.nanosecond().into(),
+                    "millisecond" | "ms" => datetime.millisecond(),
+                    "microsecond" | "mcs" => datetime.microsecond(),
+                    "nanosecond" | "ns" => datetime.nanosecond(),
                     // TODO: Fix this
                     "tzoffset" | "tz" => datetime.offset().seconds().try_into().unwrap(),
                     // TODO: Fix this

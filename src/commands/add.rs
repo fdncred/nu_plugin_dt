@@ -73,9 +73,9 @@ impl SimplePluginCommand for Add {
         match input {
             Value::Date { val, .. } => {
                 eprintln!("Date: {:?}", val);
-                return Err(LabeledError::new(
+                Err(LabeledError::new(
                     "Expected a date or datetime string".to_string(),
-                ));
+                ))
             }
             Value::String { val, .. } => {
                 // eprintln!("String: {:?}", val);
@@ -83,7 +83,7 @@ impl SimplePluginCommand for Add {
                 let zdt = parse_datetime_string_add_nanos(val, duration_nanos)?;
                 Ok(Value::string(zdt.to_string(), call.head))
             }
-            _ => return Err(LabeledError::new("Expected a date or datetime".to_string())),
+            _ => Err(LabeledError::new("Expected a date or datetime".to_string())),
         }
     }
 }
