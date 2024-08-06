@@ -1,4 +1,4 @@
-use super::utils::parse_datetime_string_add_nanos;
+use super::utils::parse_datetime_string_add_nanos_optionally;
 use crate::DtPlugin;
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
 use nu_protocol::{Category, Example, LabeledError, Signature, SyntaxShape, Value};
@@ -33,14 +33,14 @@ impl SimplePluginCommand for Add {
     fn examples(&self) -> Vec<Example> {
         vec![
             Example {
-                example: "2017-08-25 | dt add 1day",
+                example: "'2017-08-25' | dt add 1day",
                 description: "Add 1 day to the provided date",
                 result: Some(Value::test_string(
                     "2017-08-26T00:00:00-05:00[America/Chicago]",
                 )),
             },
             Example {
-                example: "2017-08-25T12:00:00 | dt add 1hr",
+                example: "'2017-08-25T12:00:00' | dt add 1hr",
                 description: "Add 1 hour to the provided date and time",
                 result: Some(Value::test_string(
                     "2017-08-25T13:00:00-05:00[America/Chicago]",
@@ -80,7 +80,7 @@ impl SimplePluginCommand for Add {
             Value::String { val, .. } => {
                 // eprintln!("String: {:?}", val);
 
-                let zdt = parse_datetime_string_add_nanos(val, duration_nanos)?;
+                let zdt = parse_datetime_string_add_nanos_optionally(val, Some(duration_nanos))?;
                 Ok(Value::string(zdt.to_string(), call.head))
             }
             _ => Err(LabeledError::new("Expected a date or datetime".to_string())),

@@ -1,4 +1,4 @@
-use super::utils::convert_nanos_to_datetime;
+use super::utils::convert_nanos_to_nushell_datetime_value;
 use crate::DtPlugin;
 use jiff::Zoned;
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
@@ -45,7 +45,7 @@ impl SimplePluginCommand for UtcNow {
             .intz("UTC")
             .map_err(|err| LabeledError::new(err.to_string()))?;
         let nanos = nowutc.timestamp().as_nanosecond();
-        convert_nanos_to_datetime(nanos, engine, call.head, true)
+        convert_nanos_to_nushell_datetime_value(nanos, engine, call.head, true)
     }
 }
 
