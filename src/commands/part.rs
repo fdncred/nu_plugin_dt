@@ -57,19 +57,19 @@ impl SimplePluginCommand for Part {
         let list = call.has_flag("list")?;
         if list {
             let rec = record! {
-              "year" => Value::test_string("year, yyyy, yy"),
-              "quarter" => Value::test_string("quarter, qq, q"),
-              "month" => Value::test_string("month, mm, m"),
-              "dayofyear" => Value::test_string("dayofyear, dy, y"),
+              "year" => Value::test_string("year, yyyy, yy, yr"),
+              "quarter" => Value::test_string("quarter, qq, q, qtr"),
+              "month" => Value::test_string("month, mm, m, mon"),
+              "dayofyear" => Value::test_string("dayofyear, dy, y, doy"),
               "day" => Value::test_string("day, dd, d"),
               "week" => Value::test_string("week, ww, wk, iso_week, isowk, isoww"),
-              "weekday" => Value::test_string("weekday, dw, w"),
-              "hour" => Value::test_string("hour, hh"),
-              "minute" => Value::test_string("minute, mi, n"),
-              "second" => Value::test_string("second, ss, s"),
+              "weekday" => Value::test_string("weekday, wd, w"),
+              "hour" => Value::test_string("hour, hh, hr"),
+              "minute" => Value::test_string("minute, mi, n, min"),
+              "second" => Value::test_string("second, ss, s, sec"),
               "millisecond" => Value::test_string("millisecond, ms"),
-              "microsecond" => Value::test_string("microsecond, mcs"),
-              "nanosecond" => Value::test_string("nanosecond, ns"),
+              "microsecond" => Value::test_string("microsecond, mcs, us"),
+              "nanosecond" => Value::test_string("nanosecond, ns, nano, nanos"),
               // "tzoffset" => Value::test_string("tzoffset, tz"),
             };
 
@@ -100,8 +100,8 @@ impl SimplePluginCommand for Part {
                 };
 
                 let date = match unit[0].as_ref() {
-                    "year" | "yyyy" | "yy" => datetime.year(),
-                    "quarter" | "qq" | "q" => {
+                    "year" | "yyyy" | "yy" | "yr" => datetime.year(),
+                    "quarter" | "qq" | "q" | "qtr" => {
                       match datetime.month().into() {
                         1..=3 => 1,
                         4..=6 => 2,
@@ -110,21 +110,21 @@ impl SimplePluginCommand for Part {
                         _ => 0
                       }
                     }
-                    "month" | "mm" | "m" => datetime.month().into(),
-                    "dayofyear" | "dy" | "y" => datetime.day_of_year(),
+                    "month" | "mm" | "m" | "mon" => datetime.month().into(),
+                    "dayofyear" | "dy" | "y" | "doy" => datetime.day_of_year(),
                     "day" | "dd" | "d" => datetime.day().into(),
                     "week" | "ww" | "wk" | "iso_week" | "isowk" | "isoww" => {
                       let date = civil::Date::new(datetime.year(), datetime.month(), datetime.day())
                         .map_err(|err| LabeledError::new(err.to_string()))?;
                       date.to_iso_week_date().week() as i16
                     }
-                    "weekday" | "dw" | "w" => datetime.weekday().to_sunday_zero_offset().into(),
-                    "hour" | "hh" => datetime.hour().into(),
-                    "minute" | "mi" | "n" => datetime.minute().into(),
-                    "second" | "ss" | "s" => datetime.second().into(),
+                    "weekday" | "wd" | "w" => datetime.weekday().to_sunday_zero_offset().into(),
+                    "hour" | "hh" | "hr" => datetime.hour().into(),
+                    "minute" | "mi" | "n" | "min" => datetime.minute().into(),
+                    "second" | "ss" | "s" | "sec" => datetime.second().into(),
                     "millisecond" | "ms" => datetime.millisecond(),
-                    "microsecond" | "mcs" => datetime.microsecond(),
-                    "nanosecond" | "ns" => datetime.nanosecond(),
+                    "microsecond" | "mcs" | "us" => datetime.microsecond(),
+                    "nanosecond" | "ns" | "nano" | "nanos" => datetime.nanosecond(),
                     // TODO: Fix this
                     // Not sure there's a way to return an tz as an i16
                     // "tzoffset" | "tz" => datetime.offset().seconds().try_into().unwrap(),
