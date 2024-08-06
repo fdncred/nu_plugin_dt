@@ -2,7 +2,7 @@ use super::utils::parse_datetime_string;
 use crate::DtPlugin;
 use jiff::civil;
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
-use nu_protocol::{record, Category, Example, LabeledError, Signature, SyntaxShape, Value};
+use nu_protocol::{record, Category, Example, LabeledError, Signature, Span, SyntaxShape, Value};
 
 pub struct Part;
 
@@ -56,24 +56,7 @@ impl SimplePluginCommand for Part {
     ) -> Result<Value, LabeledError> {
         let list = call.has_flag("list")?;
         if list {
-            let rec = record! {
-              "year" => Value::test_string("year, yyyy, yy, yr"),
-              "quarter" => Value::test_string("quarter, qq, q, qtr"),
-              "month" => Value::test_string("month, mm, m, mon"),
-              "dayofyear" => Value::test_string("dayofyear, dy, y, doy"),
-              "day" => Value::test_string("day, dd, d"),
-              "week" => Value::test_string("week, ww, wk, iso_week, isowk, isoww"),
-              "weekday" => Value::test_string("weekday, wd, w"),
-              "hour" => Value::test_string("hour, hh, hr"),
-              "minute" => Value::test_string("minute, mi, n, min"),
-              "second" => Value::test_string("second, ss, s, sec"),
-              "millisecond" => Value::test_string("millisecond, ms"),
-              "microsecond" => Value::test_string("microsecond, mcs, us"),
-              "nanosecond" => Value::test_string("nanosecond, ns, nano, nanos"),
-              // "tzoffset" => Value::test_string("tzoffset, tz"),
-            };
-
-            Ok(Value::record(rec, call.head))
+            Ok(Value::list(create_abbrev_list(), call.head))
         } else {
             let unit: Vec<String> = call.rest(0)?;
             if unit.is_empty() {
@@ -138,4 +121,114 @@ impl SimplePluginCommand for Part {
             }
         }
     }
+}
+
+fn create_abbrev_list() -> Vec<Value> {
+    let mut records = vec![];
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("year"),
+        "abbreviations" => Value::test_string("year, yyyy, yy, yr"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("quarter"),
+        "abbreviations" => Value::test_string("quarter, qq, q, qtr"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("month"),
+        "abbreviations" => Value::test_string("month, mm, m, mon"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("dayofyear"),
+        "abbreviations" => Value::test_string("dayofyear, dy, y, doy"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("day"),
+        "abbreviations" => Value::test_string("day, dd, d"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("week"),
+        "abbreviations" => Value::test_string("week, ww, wk, iso_week, isowk, isoww"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("weekday"),
+        "abbreviations" => Value::test_string("weekday, wd, w"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("hour"),
+        "abbreviations" => Value::test_string("hour, hh, hr"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("minute"),
+        "abbreviations" => Value::test_string("minute, mi, n, min"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("second"),
+        "abbreviations" => Value::test_string("second, ss, s, sec"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("millisecond"),
+        "abbreviations" => Value::test_string("millisecond, ms"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("microsecond"),
+        "abbreviations" => Value::test_string("microsecond, mcs, us"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+            "name" => Value::test_string("nanosecond"),
+            "abbreviations" => Value::test_string("nanosecond, ns, nano, nanos"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+
+    records
 }
