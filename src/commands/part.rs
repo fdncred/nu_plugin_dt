@@ -1,4 +1,4 @@
-use super::utils::parse_datetime_string;
+use super::utils::parse_datetime_string_add_nanos_optionally;
 use crate::DtPlugin;
 use jiff::civil;
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
@@ -77,7 +77,7 @@ impl SimplePluginCommand for Part {
                     }
                     Value::String { val, .. } => {
                         // eprintln!("Zoned: {:?}", zdt);
-                        parse_datetime_string(val)?
+                        parse_datetime_string_add_nanos_optionally(val, None)?
                     }
                     _ => return Err(LabeledError::new("Expected a date or datetime".to_string())),
                 };

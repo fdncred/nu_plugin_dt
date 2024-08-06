@@ -4,7 +4,7 @@ use nu_protocol::{IntoSpanned, LabeledError, PipelineData, Span, Value};
 
 // This is kind of a hack to convert jiff produced nanoseconds to Value::Date by
 // converting nanos with the 'into datetime' nushell command
-pub fn convert_nanos_to_datetime(
+pub fn convert_nanos_to_nushell_datetime_value(
     nanos: i128,
     engine: &EngineInterface,
     span: Span,
@@ -32,30 +32,10 @@ pub fn convert_nanos_to_datetime(
     Ok(datetime)
 }
 
-// Parse a string into a jiff datetime
-pub fn parse_datetime_string(s: &str) -> Result<Zoned, LabeledError> {
-    // current date time and time zone
-    let cur_date_time_zone = Zoned::now();
-    let tz = cur_date_time_zone.time_zone().clone();
-
-    // A parser can be created in a const context.
-    static PARSER: DateTimeParser = DateTimeParser::new();
-    // Parse a civil datetime string into a civil::DateTime.
-    let date_time = PARSER
-        .parse_datetime(s)
-        .map_err(|err| LabeledError::new(err.to_string()))?;
-    // eprintln!("Date: {:?}", date);
-
-    let zdt = date_time
-        .to_zoned(tz)
-        .map_err(|err| LabeledError::new(err.to_string()))?;
-
-    Ok(zdt)
-}
-
-pub fn parse_datetime_string_add_nanos(
+// Parse a string into a jiff datetime and add nanoseconds to it optionally
+pub fn parse_datetime_string_add_nanos_optionally(
     s: &str,
-    duration_nanos: i64,
+    duration_nanos: Option<i64>,
 ) -> Result<Zoned, LabeledError> {
     let cur_date_time_zone = Zoned::now();
     let tz = cur_date_time_zone.time_zone().clone();
@@ -64,20 +44,28 @@ pub fn parse_datetime_string_add_nanos(
     static PARSER: DateTimeParser = DateTimeParser::new();
 
     // Parse a civil datetime string into a civil::DateTime.
-    let date = PARSER
+    let date_time = PARSER
         .parse_datetime(s)
         .map_err(|err| LabeledError::new(err.to_string()))?;
     // eprintln!("Date: {:?}", date);
 
-    let date_plus_duration = date
-        .checked_add(duration_nanos.nanoseconds())
-        .map_err(|err| LabeledError::new(err.to_string()))?;
-    // eprintln!("Date + Duration: {:?}", date_plus_duration);
+    // If nanos are found, add them to the date
+    if let Some(nanos) = duration_nanos {
+        let date_plus_duration = date_time
+            .checked_add(nanos.nanoseconds())
+            .map_err(|err| LabeledError::new(err.to_string()))?;
+        // eprintln!("Date + Duration: {:?}", date_plus_duration);
 
-    let zdt = date_plus_duration
-        .to_zoned(tz)
-        .map_err(|err| LabeledError::new(err.to_string()))?;
-    // eprintln!("Zoned: {:?}", zdt);
+        let zdt = date_plus_duration
+            .to_zoned(tz)
+            .map_err(|err| LabeledError::new(err.to_string()))?;
+        // eprintln!("Zoned: {:?}", zdt);
 
-    Ok(zdt)
+        Ok(zdt)
+    } else {
+        let zdt = date_time
+            .to_zoned(tz)
+            .map_err(|err| LabeledError::new(err.to_string()))?;
+        Ok(zdt)
+    }
 }

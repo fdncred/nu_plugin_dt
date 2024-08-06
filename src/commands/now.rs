@@ -1,4 +1,4 @@
-use super::utils::convert_nanos_to_datetime;
+use super::utils::convert_nanos_to_nushell_datetime_value;
 use crate::DtPlugin;
 use jiff::Zoned;
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
@@ -42,7 +42,7 @@ impl SimplePluginCommand for Now {
     ) -> Result<Value, LabeledError> {
         let now = Zoned::now();
         let nanos = now.timestamp().as_nanosecond();
-        convert_nanos_to_datetime(nanos, engine, call.head, false)
+        convert_nanos_to_nushell_datetime_value(nanos, engine, call.head, false)
     }
 }
 
