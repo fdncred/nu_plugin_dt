@@ -1,8 +1,10 @@
-use super::utils::parse_datetime_string_add_nanos_optionally;
+use super::utils::{
+    get_unit_abbreviations, get_unit_from_unit_string, parse_datetime_string_add_nanos_optionally,
+};
 use crate::DtPlugin;
-use jiff::civil;
+use jiff::{civil, civil::DateTimeDifference, RoundMode, Unit};
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
-use nu_protocol::{record, Category, Example, LabeledError, Signature, Span, SyntaxShape, Value};
+use nu_protocol::{Category, Example, LabeledError, Signature, SyntaxShape, Value};
 
 pub struct Diff;
 
@@ -27,10 +29,16 @@ impl SimplePluginCommand for Diff {
                 Some('s'),
             )
             .named(
-                "larges",
+                "biggest",
                 SyntaxShape::String,
-                "Largest unit to return.",
-                Some('l'),
+                "Biggest unit to return.",
+                Some('b'),
+            )
+            .named(
+                "as",
+                SyntaxShape::String,
+                "Unit to return difference in.",
+                Some('a'),
             )
             .switch("list", "List the unit name abbreviations", Some('l'))
             .category(Category::Date)
@@ -43,20 +51,25 @@ impl SimplePluginCommand for Diff {
     fn examples(&self) -> Vec<Example> {
         vec![
             Example {
-                example: "'2017-08-25' | dt diff '2017-08-24'",
-                description: "Return the year part of the provided date",
-                result: Some(Value::test_int(2017)),
+                example: "'2019-05-10T09:59:12-07:00' | dt diff '2024-08-07T09:36:42.367322100-05:00'",
+                description: "Return the difference in the iso8601 duration format",
+                result: Some(Value::test_string("P5y2m27dT23h37m30.3673221s")),
             },
             Example {
-                example: "'2017-08-25T12:00:00' | dt diff '2017-08-24T12:00:00' --smallest dd --largest yy",
-                description: "Return the hour part of the provided datetime",
-                result: Some(Value::test_int(12)),
+                example: "'2019-05-10T09:59:12-07:00' | dt diff '2024-08-07T09:36:42.367322100-05:00' --as hr",
+                description: "Return the difference as hours in the iso8601 duration format",
+                result: Some(Value::test_string("PT45984h")),
+            },
+            Example {
+                example: "'2019-05-10T09:59:12-07:00' | dt diff '2024-08-07T09:36:42.367322100-05:00' --smallest day --biggest year",
+                description: "Return the difference as years, months, and days in the iso8601 duration format",
+                result: Some(Value::test_string("P5y2m28d")),
             },
         ]
     }
 
     fn search_terms(&self) -> Vec<&str> {
-        vec!["date", "time"]
+        vec!["date", "time", "subtraction", "math"]
     }
 
     fn run(
@@ -67,14 +80,15 @@ impl SimplePluginCommand for Diff {
         input: &Value,
     ) -> Result<Value, LabeledError> {
         let list = call.has_flag("list")?;
-        let smallest: Option<String> = call.get_flag("smallest")?;
-        let largest: Option<String> = call.get_flag("largest")?;
+        let smallest_unit_opt: Option<String> = call.get_flag("smallest")?;
+        let biggest_unit_opt: Option<String> = call.get_flag("biggest")?;
+        let as_unit_opt: Option<String> = call.get_flag("as")?;
         let input_date: String = call.req(0)?;
 
         if list {
-            Ok(Value::list(create_abbrev_list(), call.head))
+            Ok(Value::list(get_unit_abbreviations(), call.head))
         } else {
-            let datetime = match input {
+            let provided_datetime = match input {
                 Value::Date { val, .. } => {
                     eprintln!("Date: {:?}", val);
                     return Err(LabeledError::new(
@@ -88,154 +102,62 @@ impl SimplePluginCommand for Diff {
                 _ => return Err(LabeledError::new("Expected a date or datetime".to_string())),
             };
 
-            let date = match unit[0].as_ref() {
-                    "year" | "yyyy" | "yy" | "yr" => datetime.year(),
-                    "quarter" | "qq" | "q" | "qtr" => {
-                      match datetime.month().into() {
-                        1..=3 => 1,
-                        4..=6 => 2,
-                        7..=9 => 3,
-                        10..=12 => 4,
-                        _ => 0
-                      }
-                    }
-                    "month" | "mm" | "m" | "mon" => datetime.month().into(),
-                    "dayofyear" | "dy" | "y" | "doy" => datetime.day_of_year(),
-                    "day" | "dd" | "d" => datetime.day().into(),
-                    "week" | "ww" | "wk" | "iso_week" | "isowk" | "isoww" => {
-                      let date = civil::Date::new(datetime.year(), datetime.month(), datetime.day())
-                        .map_err(|err| LabeledError::new(err.to_string()))?;
-                      date.to_iso_week_date().week() as i16
-                    }
-                    "weekday" | "wd" | "w" => datetime.weekday().to_sunday_zero_offset().into(),
-                    "hour" | "hh" | "hr" => datetime.hour().into(),
-                    "minute" | "mi" | "n" | "min" => datetime.minute().into(),
-                    "second" | "ss" | "s" | "sec" => datetime.second().into(),
-                    "millisecond" | "ms" => datetime.millisecond(),
-                    "microsecond" | "mcs" | "us" => datetime.microsecond(),
-                    "nanosecond" | "ns" | "nano" | "nanos" => datetime.nanosecond(),
-                    // TODO: Fix this
-                    // Not sure there's a way to return an tz as an i16
-                    // "tzoffset" | "tz" => datetime.offset().seconds().try_into().unwrap(),
-                    _ => {
-                        return Err(LabeledError::new(
-                            "please supply a valid unit name to extract from a date/datetime. see dt part --list for list of abbreviations.",
-                        ))
-                    }
+            let civil_date_provided = civil::DateTime::from(provided_datetime);
+            let civil_input_datetime = input_date
+                .parse::<civil::DateTime>()
+                .map_err(|err| LabeledError::new(format!("Error parsing input date: {}", err)))?;
+
+            if (biggest_unit_opt.is_some() || smallest_unit_opt.is_some()) && as_unit_opt.is_some()
+            {
+                return Err(LabeledError::new(
+                    "Please provide either smallest, biggest or as unit. As unit is mutually exclusive from smallest and biggest.".to_string(),
+                ));
+            }
+
+            // if there is an as_unit, use that unit as the smallest and biggest unit
+            if let Some(as_unit_string) = as_unit_opt {
+                let as_unit = get_unit_from_unit_string(as_unit_string.clone())?;
+                let span = civil_date_provided
+                    .until(
+                        DateTimeDifference::new(civil_input_datetime)
+                            .smallest(as_unit)
+                            .largest(as_unit)
+                            .mode(RoundMode::HalfExpand),
+                    )
+                    .map_err(|err| {
+                        LabeledError::new(format!("Error calculating difference: {}", err))
+                    })?;
+
+                Ok(Value::string(span.to_string(), call.head))
+            } else {
+                // otherwise, use the smallest and biggest units provided
+                let smallest_unit = if let Some(smallest_unit_string) = smallest_unit_opt {
+                    get_unit_from_unit_string(smallest_unit_string.clone())?
+                } else {
+                    Unit::Nanosecond
                 };
-            Ok(Value::int(date.into(), call.head))
+
+                let biggest_unit = if let Some(biggest_unit_string) = biggest_unit_opt {
+                    get_unit_from_unit_string(biggest_unit_string.clone())?
+                } else {
+                    Unit::Year
+                };
+
+                let span = civil_date_provided
+                    .until(
+                        DateTimeDifference::new(civil_input_datetime)
+                            .smallest(smallest_unit)
+                            .largest(biggest_unit)
+                            .mode(RoundMode::HalfExpand),
+                    )
+                    .map_err(|err| {
+                        LabeledError::new(format!("Error calculating difference: {}", err))
+                    })?;
+
+                Ok(Value::string(span.to_string(), call.head))
+            }
         }
     }
-}
-
-fn create_abbrev_list() -> Vec<Value> {
-    let mut records = vec![];
-    let rec = Value::record(
-        record! {
-        "name" => Value::test_string("year"),
-        "abbreviations" => Value::test_string("year, yyyy, yy, yr"),
-        },
-        Span::unknown(),
-    );
-    records.push(rec);
-    let rec = Value::record(
-        record! {
-        "name" => Value::test_string("quarter"),
-        "abbreviations" => Value::test_string("quarter, qq, q, qtr"),
-        },
-        Span::unknown(),
-    );
-    records.push(rec);
-    let rec = Value::record(
-        record! {
-        "name" => Value::test_string("month"),
-        "abbreviations" => Value::test_string("month, mm, m, mon"),
-        },
-        Span::unknown(),
-    );
-    records.push(rec);
-    let rec = Value::record(
-        record! {
-        "name" => Value::test_string("dayofyear"),
-        "abbreviations" => Value::test_string("dayofyear, dy, y, doy"),
-        },
-        Span::unknown(),
-    );
-    records.push(rec);
-    let rec = Value::record(
-        record! {
-        "name" => Value::test_string("day"),
-        "abbreviations" => Value::test_string("day, dd, d"),
-        },
-        Span::unknown(),
-    );
-    records.push(rec);
-    let rec = Value::record(
-        record! {
-        "name" => Value::test_string("week"),
-        "abbreviations" => Value::test_string("week, ww, wk, iso_week, isowk, isoww"),
-        },
-        Span::unknown(),
-    );
-    records.push(rec);
-    let rec = Value::record(
-        record! {
-        "name" => Value::test_string("weekday"),
-        "abbreviations" => Value::test_string("weekday, wd, w"),
-        },
-        Span::unknown(),
-    );
-    records.push(rec);
-    let rec = Value::record(
-        record! {
-        "name" => Value::test_string("hour"),
-        "abbreviations" => Value::test_string("hour, hh, hr"),
-        },
-        Span::unknown(),
-    );
-    records.push(rec);
-    let rec = Value::record(
-        record! {
-        "name" => Value::test_string("minute"),
-        "abbreviations" => Value::test_string("minute, mi, n, min"),
-        },
-        Span::unknown(),
-    );
-    records.push(rec);
-    let rec = Value::record(
-        record! {
-        "name" => Value::test_string("second"),
-        "abbreviations" => Value::test_string("second, ss, s, sec"),
-        },
-        Span::unknown(),
-    );
-    records.push(rec);
-    let rec = Value::record(
-        record! {
-        "name" => Value::test_string("millisecond"),
-        "abbreviations" => Value::test_string("millisecond, ms"),
-        },
-        Span::unknown(),
-    );
-    records.push(rec);
-    let rec = Value::record(
-        record! {
-        "name" => Value::test_string("microsecond"),
-        "abbreviations" => Value::test_string("microsecond, mcs, us"),
-        },
-        Span::unknown(),
-    );
-    records.push(rec);
-    let rec = Value::record(
-        record! {
-            "name" => Value::test_string("nanosecond"),
-            "abbreviations" => Value::test_string("nanosecond, ns, nano, nanos"),
-        },
-        Span::unknown(),
-    );
-    records.push(rec);
-
-    records
 }
 
 #[test]
