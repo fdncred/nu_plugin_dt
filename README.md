@@ -49,6 +49,7 @@ This is not meant to be an exhaustive list of requirments but enough to get star
     - [x] `dt now`
     - [x] `dt utcnow`
     - [x] `dt part`
+    - [x] `dt diff` datetime string
 
     - should date math be more [sql like](https://www.sqlshack.com/how-to-add-or-subtract-dates-in-sql-server/) where you have a `date add` and `date diff` function that takes a positive or negative number and a unit?
         - [dt add](https://www.w3schools.com/sql/func_sqlserver_dateadd.asp) SQL: `SELECT DATEADD(year, 1, '2017/08/25') AS DateAdd;`
@@ -103,7 +104,7 @@ dt now
 # dt utcnow (get the current utc datetime)
 dt utcnow
 # dt diff (get the difference between two dates)
-'2017-08-25' | dt diff '2024-07-01' --smallest unit --largest unit
+'2017-08-25' | dt diff '2024-07-01' --smallest unit --biggest unit
 ```
 
 ## If Date Math were SQL Style
