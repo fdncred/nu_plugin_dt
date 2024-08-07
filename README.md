@@ -102,6 +102,8 @@ These could take a date or date time piped in.
 dt now
 # dt utcnow (get the current utc datetime)
 dt utcnow
+# dt diff (get the difference between two dates)
+'2017-08-25' | dt diff '2024-07-01' --smallest unit --largest unit
 ```
 
 ## If Date Math were SQL Style

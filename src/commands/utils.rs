@@ -1,6 +1,6 @@
-use jiff::{fmt::temporal::DateTimeParser, ToSpan, Zoned};
+use jiff::{civil, fmt::temporal::DateTimeParser, ToSpan, Unit, Zoned};
 use nu_plugin::{EngineInterface, EvaluatedCall};
-use nu_protocol::{IntoSpanned, LabeledError, PipelineData, Span, Value};
+use nu_protocol::{record, IntoSpanned, LabeledError, PipelineData, Span, Value};
 
 // This is kind of a hack to convert jiff produced nanoseconds to Value::Date by
 // converting nanos with the 'into datetime' nushell command
@@ -68,4 +68,179 @@ pub fn parse_datetime_string_add_nanos_optionally(
             .map_err(|err| LabeledError::new(err.to_string()))?;
         Ok(zdt)
     }
+}
+
+pub fn get_part_from_zoned_as_i16(
+    part_string: String,
+    datetime: Zoned,
+) -> Result<i16, LabeledError> {
+    let date = match part_string.as_ref() {
+        "year" | "yyyy" | "yy" | "yr" => datetime.year(),
+        "quarter" | "qq" | "q" | "qtr" => {
+            match datetime.month().into() {
+            1..=3 => 1,
+            4..=6 => 2,
+            7..=9 => 3,
+            10..=12 => 4,
+            _ => 0
+            }
+        }
+        "month" | "mm" | "m" | "mon" => datetime.month().into(),
+        "dayofyear" | "dy" | "y" | "doy" => datetime.day_of_year(),
+        "day" | "dd" | "d" => datetime.day().into(),
+        "week" | "ww" | "wk" | "iso_week" | "isowk" | "isoww" => {
+            let date = civil::Date::new(datetime.year(), datetime.month(), datetime.day())
+            .map_err(|err| LabeledError::new(err.to_string()))?;
+            date.to_iso_week_date().week() as i16
+        }
+        "weekday" | "wd" | "w" => datetime.weekday().to_sunday_zero_offset().into(),
+        "hour" | "hh" | "hr" => datetime.hour().into(),
+        "minute" | "mi" | "n" | "min" => datetime.minute().into(),
+        "second" | "ss" | "s" | "sec" => datetime.second().into(),
+        "millisecond" | "ms" | "millis" => datetime.millisecond(),
+        "microsecond" | "mcs" | "us" | "micros" => datetime.microsecond(),
+        "nanosecond" | "ns" | "nano" | "nanos" => datetime.nanosecond(),
+        // TODO: Fix this
+        // Not sure there's a way to return an tz as an i16
+        // "tzoffset" | "tz" => datetime.offset().seconds().try_into().unwrap(),
+        _ => {
+            return Err(LabeledError::new(
+                "please supply a valid unit name to extract from a date/datetime. see dt part --list for list of abbreviations.",
+            ))
+        }
+    };
+
+    Ok(date)
+}
+
+pub fn get_unit_from_unit_string(unit_name: String) -> Result<Unit, LabeledError> {
+    let unit = match unit_name.as_ref() {
+        "year" | "yyyy" | "yy" | "yr" => Ok(Unit::Year),
+        "month" | "mm" | "m" | "mon" => Ok(Unit::Month),
+        "day" | "dd" | "d" => Ok(Unit::Day),
+        "week" | "ww" | "wk" | "iso_week" | "isowk" | "isoww" => Ok(Unit::Week),
+        "hour" | "hh" | "hr" => Ok(Unit::Hour),
+        "minute" | "mi" | "n" | "min" => Ok(Unit::Minute),
+        "second" | "ss" | "s" | "sec" => Ok(Unit::Second),
+        "millisecond" | "ms" | "millis" => Ok(Unit::Millisecond),
+        "microsecond" | "mcs" | "us" | "micros" => Ok(Unit::Microsecond),
+        "nanosecond" | "ns" | "nano" | "nanos" => Ok(Unit::Nanosecond),
+        _ => {
+            return Err(LabeledError::new(
+                "please supply a valid unit name to extract from a date/datetime. see dt part --list for list of abbreviations.",
+            ))
+        }
+    };
+
+    unit
+}
+
+pub fn get_unit_abbreviations() -> Vec<Value> {
+    let mut records = vec![];
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("year"),
+        "abbreviations" => Value::test_string("year, yyyy, yy, yr"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("quarter"),
+        "abbreviations" => Value::test_string("quarter, qq, q, qtr"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("month"),
+        "abbreviations" => Value::test_string("month, mm, m, mon"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("dayofyear"),
+        "abbreviations" => Value::test_string("dayofyear, dy, y, doy"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("day"),
+        "abbreviations" => Value::test_string("day, dd, d"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("week"),
+        "abbreviations" => Value::test_string("week, ww, wk, iso_week, isowk, isoww"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("weekday"),
+        "abbreviations" => Value::test_string("weekday, wd, w"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("hour"),
+        "abbreviations" => Value::test_string("hour, hh, hr"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("minute"),
+        "abbreviations" => Value::test_string("minute, mi, n, min"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("second"),
+        "abbreviations" => Value::test_string("second, ss, s, sec"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("millisecond"),
+        "abbreviations" => Value::test_string("millisecond, ms, millis"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+        "name" => Value::test_string("microsecond"),
+        "abbreviations" => Value::test_string("microsecond, mcs, us, micros"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+    let rec = Value::record(
+        record! {
+            "name" => Value::test_string("nanosecond"),
+            "abbreviations" => Value::test_string("nanosecond, ns, nano, nanos"),
+        },
+        Span::unknown(),
+    );
+    records.push(rec);
+
+    records
 }

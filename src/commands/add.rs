@@ -27,7 +27,7 @@ impl SimplePluginCommand for Add {
     }
 
     fn search_terms(&self) -> Vec<&str> {
-        vec!["date", "time"]
+        vec!["date", "time", "addition", "math"]
     }
 
     fn examples(&self) -> Vec<Example> {
