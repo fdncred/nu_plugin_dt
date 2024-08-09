@@ -129,10 +129,7 @@ impl SimplePluginCommand for Diff {
                     })?;
 
                 let span_str = create_nushelly_duration_string(span);
-                Ok(Value::string(
-                    format!("{}\n{}", span.to_string(), span_str),
-                    call.head,
-                ))
+                Ok(Value::string(format!("{}\n{}", span, span_str), call.head))
             } else {
                 // otherwise, use the smallest and biggest units provided
                 let smallest_unit = if let Some(smallest_unit_string) = smallest_unit_opt {
@@ -159,29 +156,46 @@ impl SimplePluginCommand for Diff {
                     })?;
 
                 let span_str = create_nushelly_duration_string(span);
-                Ok(Value::string(
-                    format!("{}\n{}", span.to_string(), span_str),
-                    call.head,
-                ))
+                Ok(Value::string(format!("{}\n{}", span, span_str), call.head))
             }
         }
     }
 }
 
 fn create_nushelly_duration_string(span: jiff::Span) -> String {
-    format!(
-        "{}yrs {}mths {}wks {}days {}hrs {}mins {}secs {}ms {}us {}ns",
-        span.get_years(),
-        span.get_months(),
-        span.get_weeks(),
-        span.get_days(),
-        span.get_hours(),
-        span.get_minutes(),
-        span.get_seconds(),
-        span.get_milliseconds(),
-        span.get_microseconds(),
-        span.get_nanoseconds(),
-    )
+    let mut span_vec = vec![];
+    if span.get_years() > 0 {
+        span_vec.push(format!("{}yrs", span.get_years()));
+    }
+    if span.get_months() > 0 {
+        span_vec.push(format!("{}mths", span.get_months()));
+    }
+    if span.get_weeks() > 0 {
+        span_vec.push(format!("{}wks", span.get_weeks()));
+    }
+    if span.get_days() > 0 {
+        span_vec.push(format!("{}days", span.get_days()));
+    }
+    if span.get_hours() > 0 {
+        span_vec.push(format!("{}hrs", span.get_hours()));
+    }
+    if span.get_minutes() > 0 {
+        span_vec.push(format!("{}mins", span.get_minutes()));
+    }
+    if span.get_seconds() > 0 {
+        span_vec.push(format!("{}secs", span.get_seconds()));
+    }
+    if span.get_milliseconds() > 0 {
+        span_vec.push(format!("{}ms", span.get_milliseconds()));
+    }
+    if span.get_microseconds() > 0 {
+        span_vec.push(format!("{}µs", span.get_microseconds()));
+    }
+    if span.get_nanoseconds() > 0 {
+        span_vec.push(format!("{}ns", span.get_nanoseconds()));
+    }
+
+    span_vec.join(" ").trim().to_string()
 }
 
 #[test]
