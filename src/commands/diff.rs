@@ -128,7 +128,11 @@ impl SimplePluginCommand for Diff {
                         LabeledError::new(format!("Error calculating difference: {}", err))
                     })?;
 
-                Ok(Value::string(span.to_string(), call.head))
+                let span_str = create_nushelly_duration_string(span);
+                Ok(Value::string(
+                    format!("{}\n{}", span.to_string(), span_str),
+                    call.head,
+                ))
             } else {
                 // otherwise, use the smallest and biggest units provided
                 let smallest_unit = if let Some(smallest_unit_string) = smallest_unit_opt {
@@ -154,10 +158,30 @@ impl SimplePluginCommand for Diff {
                         LabeledError::new(format!("Error calculating difference: {}", err))
                     })?;
 
-                Ok(Value::string(span.to_string(), call.head))
+                let span_str = create_nushelly_duration_string(span);
+                Ok(Value::string(
+                    format!("{}\n{}", span.to_string(), span_str),
+                    call.head,
+                ))
             }
         }
     }
+}
+
+fn create_nushelly_duration_string(span: jiff::Span) -> String {
+    format!(
+        "{}yrs {}mths {}wks {}days {}hrs {}mins {}secs {}ms {}us {}ns",
+        span.get_years(),
+        span.get_months(),
+        span.get_weeks(),
+        span.get_days(),
+        span.get_hours(),
+        span.get_minutes(),
+        span.get_seconds(),
+        span.get_milliseconds(),
+        span.get_microseconds(),
+        span.get_nanoseconds(),
+    )
 }
 
 #[test]
