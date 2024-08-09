@@ -75,8 +75,8 @@ pub fn get_part_from_zoned_as_i16(
     datetime: Zoned,
 ) -> Result<i16, LabeledError> {
     let date = match part_string.as_ref() {
-        "year" | "yyyy" | "yy" | "yr" => datetime.year(),
-        "quarter" | "qq" | "q" | "qtr" => {
+        "year" | "years" | "yyyy" | "yy" | "yr" => datetime.year(),
+        "quarter" | "qq" | "q" | "qs" | "qtr" => {
             match datetime.month().into() {
             1..=3 => 1,
             4..=6 => 2,
@@ -85,18 +85,18 @@ pub fn get_part_from_zoned_as_i16(
             _ => 0
             }
         }
-        "month" | "mm" | "m" | "mon" => datetime.month().into(),
+        "month" | "months" | "mm" | "m" | "mon" => datetime.month().into(),
         "dayofyear" | "dy" | "y" | "doy" => datetime.day_of_year(),
-        "day" | "dd" | "d" => datetime.day().into(),
-        "week" | "ww" | "wk" | "iso_week" | "isowk" | "isoww" => {
+        "day" | "days" | "dd" | "d" => datetime.day().into(),
+        "week" | "weeks" | "ww" | "wk" | "wks" | "iso_week" | "isowk" | "isoww" => {
             let date = civil::Date::new(datetime.year(), datetime.month(), datetime.day())
             .map_err(|err| LabeledError::new(err.to_string()))?;
             date.to_iso_week_date().week() as i16
         }
-        "weekday" | "wd" | "w" => datetime.weekday().to_sunday_zero_offset().into(),
-        "hour" | "hh" | "hr" => datetime.hour().into(),
-        "minute" | "mi" | "n" | "min" => datetime.minute().into(),
-        "second" | "ss" | "s" | "sec" => datetime.second().into(),
+        "weekday" | "wd" | "wds" | "w" => datetime.weekday().to_sunday_zero_offset().into(),
+        "hour" | "hours" | "hh" | "hr" | "hrs" => datetime.hour().into(),
+        "minute" | "minutes" | "mi" | "n" | "min" | "mins" => datetime.minute().into(),
+        "second" | "seconds" | "ss" | "s" | "sec" | "secs" => datetime.second().into(),
         "millisecond" | "ms" | "millis" => datetime.millisecond(),
         "microsecond" | "mcs" | "us" | "micros" => datetime.microsecond(),
         "nanosecond" | "ns" | "nano" | "nanos" => datetime.nanosecond(),

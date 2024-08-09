@@ -170,11 +170,23 @@ fn create_nushelly_duration_string(span: jiff::Span) -> String {
     if span.get_months() > 0 {
         span_vec.push(format!("{}mths", span.get_months()));
     }
-    if span.get_weeks() > 0 {
-        span_vec.push(format!("{}wks", span.get_weeks()));
-    }
-    if span.get_days() > 0 {
-        span_vec.push(format!("{}days", span.get_days()));
+    // if we have more than 6 days, show weeks
+    let days_span = span.get_days();
+    if days_span > 6 {
+        let weeks = span.get_weeks();
+        if weeks == 0 {
+            let (weeks, days) = (days_span / 7, days_span % 7);
+            span_vec.push(format!("{}wks", weeks));
+            span_vec.push(format!("{}days", days));
+        } else {
+            if span.get_days() > 0 {
+                span_vec.push(format!("{}days", span.get_days()));
+            }
+        }
+    } else {
+        if span.get_days() > 0 {
+            span_vec.push(format!("{}days", span.get_days()));
+        }
     }
     if span.get_hours() > 0 {
         span_vec.push(format!("{}hrs", span.get_hours()));
