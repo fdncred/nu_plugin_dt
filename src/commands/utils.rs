@@ -75,7 +75,7 @@ pub fn get_part_from_zoned_as_i16(
     datetime: Zoned,
 ) -> Result<i16, LabeledError> {
     let date = match part_string.as_ref() {
-        "year" | "years" | "yyyy" | "yy" | "yr" => datetime.year(),
+        "year" | "years" | "yyyy" | "yy" | "yr" | "yrs" => datetime.year(),
         "quarter" | "qq" | "q" | "qs" | "qtr" => {
             match datetime.month().into() {
             1..=3 => 1,
@@ -85,8 +85,8 @@ pub fn get_part_from_zoned_as_i16(
             _ => 0
             }
         }
-        "month" | "months" | "mm" | "m" | "mon" => datetime.month().into(),
-        "dayofyear" | "dy" | "y" | "doy" => datetime.day_of_year(),
+        "month" | "months" | "mth" | "mths" | "mm" | "m" | "mon" => datetime.month().into(),
+        "dayofyear" | "dy" | "doy" => datetime.day_of_year(),
         "day" | "days" | "dd" | "d" => datetime.day().into(),
         "week" | "weeks" | "ww" | "wk" | "wks" | "iso_week" | "isowk" | "isoww" => {
             let date = civil::Date::new(datetime.year(), datetime.month(), datetime.day())
@@ -115,13 +115,13 @@ pub fn get_part_from_zoned_as_i16(
 
 pub fn get_unit_from_unit_string(unit_name: String) -> Result<Unit, LabeledError> {
     let unit = match unit_name.as_ref() {
-        "year" | "yyyy" | "yy" | "yr" => Ok(Unit::Year),
-        "month" | "mm" | "m" | "mon" => Ok(Unit::Month),
-        "day" | "dd" | "d" => Ok(Unit::Day),
-        "week" | "ww" | "wk" | "iso_week" | "isowk" | "isoww" => Ok(Unit::Week),
-        "hour" | "hh" | "hr" => Ok(Unit::Hour),
-        "minute" | "mi" | "n" | "min" => Ok(Unit::Minute),
-        "second" | "ss" | "s" | "sec" => Ok(Unit::Second),
+        "year" | "years" | "yyyy" | "yy" | "yr" | "yrs" => Ok(Unit::Year),
+        "month" | "months" | "mth" | "mths" | "mm" | "m" | "mon" => Ok(Unit::Month),
+        "day" | "days" | "dd" | "d" => Ok(Unit::Day),
+        "week" | "weeks" | "ww" | "wk" | "wks" | "iso_week" | "isowk" | "isoww" => Ok(Unit::Week),
+        "hour" | "hours" | "hh" | "hr" | "hrs" => Ok(Unit::Hour),
+        "minute" | "minutes" | "mi" | "n" | "min" | "mins" => Ok(Unit::Minute),
+        "second" | "seconds" | "ss" | "s" | "sec" | "secs" => Ok(Unit::Second),
         "millisecond" | "ms" | "millis" => Ok(Unit::Millisecond),
         "microsecond" | "mcs" | "us" | "micros" => Ok(Unit::Microsecond),
         "nanosecond" | "ns" | "nano" | "nanos" => Ok(Unit::Nanosecond),
@@ -140,7 +140,7 @@ pub fn get_unit_abbreviations() -> Vec<Value> {
     let rec = Value::record(
         record! {
         "name" => Value::test_string("year"),
-        "abbreviations" => Value::test_string("year, yyyy, yy, yr"),
+        "abbreviations" => Value::test_string("year,years, yyyy, yy, yr, yrs"),
         },
         Span::unknown(),
     );
@@ -148,7 +148,7 @@ pub fn get_unit_abbreviations() -> Vec<Value> {
     let rec = Value::record(
         record! {
         "name" => Value::test_string("quarter"),
-        "abbreviations" => Value::test_string("quarter, qq, q, qtr"),
+        "abbreviations" => Value::test_string("quarter, qq, q, qs, qtr"),
         },
         Span::unknown(),
     );
@@ -156,7 +156,7 @@ pub fn get_unit_abbreviations() -> Vec<Value> {
     let rec = Value::record(
         record! {
         "name" => Value::test_string("month"),
-        "abbreviations" => Value::test_string("month, mm, m, mon"),
+        "abbreviations" => Value::test_string("month, months, mth, mths, mm, m, mon"),
         },
         Span::unknown(),
     );
@@ -164,7 +164,7 @@ pub fn get_unit_abbreviations() -> Vec<Value> {
     let rec = Value::record(
         record! {
         "name" => Value::test_string("dayofyear"),
-        "abbreviations" => Value::test_string("dayofyear, dy, y, doy"),
+        "abbreviations" => Value::test_string("dayofyear, dy, doy"),
         },
         Span::unknown(),
     );
@@ -172,7 +172,7 @@ pub fn get_unit_abbreviations() -> Vec<Value> {
     let rec = Value::record(
         record! {
         "name" => Value::test_string("day"),
-        "abbreviations" => Value::test_string("day, dd, d"),
+        "abbreviations" => Value::test_string("day, days, dd, d"),
         },
         Span::unknown(),
     );
@@ -180,7 +180,7 @@ pub fn get_unit_abbreviations() -> Vec<Value> {
     let rec = Value::record(
         record! {
         "name" => Value::test_string("week"),
-        "abbreviations" => Value::test_string("week, ww, wk, iso_week, isowk, isoww"),
+        "abbreviations" => Value::test_string("week, weeks, ww, wk, wks, iso_week, isowk, isoww"),
         },
         Span::unknown(),
     );
@@ -188,7 +188,7 @@ pub fn get_unit_abbreviations() -> Vec<Value> {
     let rec = Value::record(
         record! {
         "name" => Value::test_string("weekday"),
-        "abbreviations" => Value::test_string("weekday, wd, w"),
+        "abbreviations" => Value::test_string("weekday, wd, wds, w"),
         },
         Span::unknown(),
     );
@@ -196,7 +196,7 @@ pub fn get_unit_abbreviations() -> Vec<Value> {
     let rec = Value::record(
         record! {
         "name" => Value::test_string("hour"),
-        "abbreviations" => Value::test_string("hour, hh, hr"),
+        "abbreviations" => Value::test_string("hour, hours, hh, hr, hrs"),
         },
         Span::unknown(),
     );
@@ -204,7 +204,7 @@ pub fn get_unit_abbreviations() -> Vec<Value> {
     let rec = Value::record(
         record! {
         "name" => Value::test_string("minute"),
-        "abbreviations" => Value::test_string("minute, mi, n, min"),
+        "abbreviations" => Value::test_string("minute, minutes, mi, n, min, mins"),
         },
         Span::unknown(),
     );
@@ -212,7 +212,7 @@ pub fn get_unit_abbreviations() -> Vec<Value> {
     let rec = Value::record(
         record! {
         "name" => Value::test_string("second"),
-        "abbreviations" => Value::test_string("second, ss, s, sec"),
+        "abbreviations" => Value::test_string("second, seconds, ss, s, sec, secs"),
         },
         Span::unknown(),
     );
