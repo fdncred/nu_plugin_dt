@@ -140,7 +140,7 @@ pub fn get_unit_abbreviations() -> Vec<Value> {
     let rec = Value::record(
         record! {
         "name" => Value::test_string("year"),
-        "abbreviations" => Value::test_string("year,years, yyyy, yy, yr, yrs"),
+        "abbreviations" => Value::test_string("year, years, yyyy, yy, yr, yrs"),
         },
         Span::unknown(),
     );
