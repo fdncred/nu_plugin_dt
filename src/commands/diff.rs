@@ -95,10 +95,7 @@ impl SimplePluginCommand for Diff {
                         "Expected a date or datetime string".to_string(),
                     ));
                 }
-                Value::String { val, .. } => {
-                    // eprintln!("Zoned: {:?}", zdt);
-                    parse_datetime_string_add_nanos_optionally(val, None)?
-                }
+                Value::String { val, .. } => parse_datetime_string_add_nanos_optionally(val, None)?,
                 _ => return Err(LabeledError::new("Expected a date or datetime".to_string())),
             };
 
@@ -177,7 +174,9 @@ fn create_nushelly_duration_string(span: jiff::Span) -> String {
         if weeks == 0 {
             let (weeks, days) = (days_span / 7, days_span % 7);
             span_vec.push(format!("{}wks", weeks));
-            span_vec.push(format!("{}days", days));
+            if days > 0 {
+                span_vec.push(format!("{}days", days));
+            }
         } else {
             if span.get_days() > 0 {
                 span_vec.push(format!("{}days", span.get_days()));
