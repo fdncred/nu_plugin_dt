@@ -125,7 +125,19 @@ impl SimplePluginCommand for Diff {
                         LabeledError::new(format!("Error calculating difference: {}", err))
                     })?;
 
-                let span_str = create_nushelly_duration_string(span);
+                // We only want to return the span in the unit asked for
+                let span_str = match as_unit {
+                    Unit::Year => format!("{}yrs", span.get_years()),
+                    Unit::Month => format!("{}mths", span.get_months()),
+                    Unit::Week => format!("{}wks", span.get_weeks()),
+                    Unit::Day => format!("{}days", span.get_days()),
+                    Unit::Hour => format!("{}hrs", span.get_hours()),
+                    Unit::Minute => format!("{}mins", span.get_minutes()),
+                    Unit::Second => format!("{}secs", span.get_seconds()),
+                    Unit::Millisecond => format!("{}ms", span.get_milliseconds()),
+                    Unit::Microsecond => format!("{}µs", span.get_microseconds()),
+                    Unit::Nanosecond => format!("{}ns", span.get_nanoseconds()),
+                };
                 Ok(Value::string(format!("{}\n{}", span, span_str), call.head))
             } else {
                 // otherwise, use the smallest and biggest units provided
