@@ -95,10 +95,7 @@ impl SimplePluginCommand for Diff {
                         "Expected a date or datetime string".to_string(),
                     ));
                 }
-                Value::String { val, .. } => {
-                    // eprintln!("Zoned: {:?}", zdt);
-                    parse_datetime_string_add_nanos_optionally(val, None)?
-                }
+                Value::String { val, .. } => parse_datetime_string_add_nanos_optionally(val, None)?,
                 _ => return Err(LabeledError::new("Expected a date or datetime".to_string())),
             };
 
@@ -128,7 +125,19 @@ impl SimplePluginCommand for Diff {
                         LabeledError::new(format!("Error calculating difference: {}", err))
                     })?;
 
-                let span_str = create_nushelly_duration_string(span);
+                // We only want to return the span in the unit asked for
+                let span_str = match as_unit {
+                    Unit::Year => format!("{}yrs", span.get_years()),
+                    Unit::Month => format!("{}mths", span.get_months()),
+                    Unit::Week => format!("{}wks", span.get_weeks()),
+                    Unit::Day => format!("{}days", span.get_days()),
+                    Unit::Hour => format!("{}hrs", span.get_hours()),
+                    Unit::Minute => format!("{}mins", span.get_minutes()),
+                    Unit::Second => format!("{}secs", span.get_seconds()),
+                    Unit::Millisecond => format!("{}ms", span.get_milliseconds()),
+                    Unit::Microsecond => format!("{}µs", span.get_microseconds()),
+                    Unit::Nanosecond => format!("{}ns", span.get_nanoseconds()),
+                };
                 Ok(Value::string(format!("{}\n{}", span, span_str), call.head))
             } else {
                 // otherwise, use the smallest and biggest units provided
@@ -177,7 +186,9 @@ fn create_nushelly_duration_string(span: jiff::Span) -> String {
         if weeks == 0 {
             let (weeks, days) = (days_span / 7, days_span % 7);
             span_vec.push(format!("{}wks", weeks));
-            span_vec.push(format!("{}days", days));
+            if days > 0 {
+                span_vec.push(format!("{}days", days));
+            }
         } else {
             if span.get_days() > 0 {
                 span_vec.push(format!("{}days", span.get_days()));

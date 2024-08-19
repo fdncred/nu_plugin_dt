@@ -40,11 +40,23 @@ pub fn parse_datetime_string_add_nanos_optionally(
     let cur_date_time_zone = Zoned::now();
     let tz = cur_date_time_zone.time_zone().clone();
 
+    // if len is 10 it's a date only 2024-08-09
+    //   USE parse_date or parse_timestamp (appends 00:00:00)
+    // if len is 8 it's time only 09:33:12
+    //   USE parse_time
+    // if it has 3 - or 1 + it's a datetime with a timezone
+    // or if it is > 19 without . it's a datetime with a timezone
+    //
+    //   USE parse_timestamp (this works for date only too)
+    // else
+    //   USE parse_datetime
+
     // A parser can be created in a const context.
     static PARSER: DateTimeParser = DateTimeParser::new();
 
     // Parse a civil datetime string into a civil::DateTime.
     let date_time = PARSER
+        // .parse_timestamp(s)
         .parse_datetime(s)
         .map_err(|err| LabeledError::new(err.to_string()))?;
     // eprintln!("Date: {:?}", date);
@@ -62,11 +74,14 @@ pub fn parse_datetime_string_add_nanos_optionally(
         // eprintln!("Zoned: {:?}", zdt);
 
         Ok(zdt)
+        // Ok(date_plus_duration.to_zoned(tz))
     } else {
+        // This is converting all dates to the current timezone, which is wrong
         let zdt = date_time
             .to_zoned(tz)
             .map_err(|err| LabeledError::new(err.to_string()))?;
         Ok(zdt)
+        // Ok(date_time.to_zoned(tz))
     }
 }
 
