@@ -1,5 +1,6 @@
 use super::utils::parse_datetime_string_add_nanos_optionally;
 use crate::DtPlugin;
+use jiff::{tz, tz::TimeZone, Timestamp, ToSpan, Zoned};
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
 use nu_protocol::{Category, Example, LabeledError, Signature, SyntaxShape, Value};
 
@@ -34,16 +35,23 @@ impl SimplePluginCommand for Add {
         vec![
             Example {
                 example: "'2017-08-25' | dt add 1day",
-                description: "Add 1 day to the provided date",
+                description: "Add nushell duration of 1 day to the provided date string in the local timezone",
                 result: Some(Value::test_string(
                     "2017-08-26T00:00:00-05:00[America/Chicago]",
                 )),
             },
             Example {
                 example: "'2017-08-25T12:00:00' | dt add 1hr",
-                description: "Add 1 hour to the provided date and time",
+                description: "Add nushell duration of 1 hour to the provided date and time string in the local timezone",
                 result: Some(Value::test_string(
                     "2017-08-25T13:00:00-05:00[America/Chicago]",
+                )),
+            },
+            Example {
+                example: "2017-08-25 | dt add 2wk",
+                description: "Add nushell duration of 2 weeks to the provided nushell date in the local timezone",
+                result: Some(Value::test_string(
+                    "2017-09-07T19:00:00-05:00[America/Chicago]",
                 )),
             },
         ]
@@ -70,21 +78,48 @@ impl SimplePluginCommand for Add {
 
         // eprintln!("Duration: {:?}", duration_nanos);
 
-        match input {
+        let datetime = match input {
             Value::Date { val, .. } => {
-                eprintln!("Date: {:?}", val);
-                Err(LabeledError::new(
-                    "Expected a date or datetime string".to_string(),
-                ))
+                // eprintln!("Date: {:?}", val);
+                let cur_date_time_zone = Zoned::now();
+                let local_tz = cur_date_time_zone.time_zone().clone();
+
+                // get chrono nanoseconds
+                let chrono_nanos = val.timestamp_nanos_opt().ok_or_else(|| {
+                    LabeledError::new("Expected a date or datetime string".to_string())
+                })?;
+                // create jiff timestamp from chrono nanoseconds
+                let jd = Timestamp::from_nanosecond(chrono_nanos as i128)
+                    .map_err(|err| LabeledError::new(err.to_string()))?;
+                // add the duration nanoseconds to the jiff timestamp
+                let jd_plus_nanos =
+                    jd.checked_add(duration_nanos.nanoseconds())
+                        .map_err(|err| {
+                            LabeledError::new(format!("Error adding duration: {}", err.to_string()))
+                        })?;
+                // get the chrono timezone
+                let tz_fixed = val.timezone();
+                // eprintln!("tz_fixed: {:?}", tz_fixed);
+                // TODO: This is a little wonky. If the timezone is UTC, we set the jiff local timezone.
+                // but what happens if the user wants UTC?
+                // we should probably allow the user to specify the timezone or just always output in UTC.
+                if tz_fixed.to_string() == "+00:00" {
+                    // set the jiff local timezone
+                    jd_plus_nanos.to_zoned(local_tz)
+                } else {
+                    // set the jiff zoned timezone
+                    jd_plus_nanos.to_zoned(TimeZone::fixed(tz::offset(
+                        (tz_fixed.local_minus_utc() / 3600) as i8,
+                    )))
+                }
             }
             Value::String { val, .. } => {
                 // eprintln!("String: {:?}", val);
-
-                let zdt = parse_datetime_string_add_nanos_optionally(val, Some(duration_nanos))?;
-                Ok(Value::string(zdt.to_string(), call.head))
+                parse_datetime_string_add_nanos_optionally(val, Some(duration_nanos))?
             }
-            _ => Err(LabeledError::new("Expected a date or datetime".to_string())),
-        }
+            _ => return Err(LabeledError::new("Expected a date or datetime".to_string())),
+        };
+        Ok(Value::string(datetime.to_string(), call.head))
     }
 }
 
