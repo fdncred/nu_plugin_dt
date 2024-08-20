@@ -19,7 +19,7 @@ impl SimplePluginCommand for Diff {
         Signature::build(self.name())
             .required(
                 "date",
-                SyntaxShape::String,
+                SyntaxShape::OneOf(vec![SyntaxShape::String, SyntaxShape::DateTime]),
                 "Date to return the difference from.",
             )
             .named(
@@ -83,7 +83,20 @@ impl SimplePluginCommand for Diff {
         let smallest_unit_opt: Option<String> = call.get_flag("smallest")?;
         let biggest_unit_opt: Option<String> = call.get_flag("biggest")?;
         let as_unit_opt: Option<String> = call.get_flag("as")?;
-        let input_date: String = call.req(0)?;
+        let input_date_provided: Value = call.req(0)?;
+
+        let input_date = match input_date_provided {
+            Value::String { val, .. } => val,
+            Value::Date { val, .. } => val.to_rfc3339(),
+            _ => {
+                return Err(
+                    LabeledError::new("Expected a date or datetime string".to_string())
+                        .with_label("Error", input_date_provided.span()),
+                );
+            }
+        };
+
+        // eprintln!("Input date: {:?}", input_date);
 
         if list {
             Ok(Value::list(get_unit_abbreviations(), call.head))
