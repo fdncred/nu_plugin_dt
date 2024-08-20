@@ -202,15 +202,11 @@ fn create_nushelly_duration_string(span: jiff::Span) -> String {
             if days > 0 {
                 span_vec.push(format!("{}days", days));
             }
-        } else {
-            if span.get_days() > 0 {
-                span_vec.push(format!("{}days", span.get_days()));
-            }
-        }
-    } else {
-        if span.get_days() > 0 {
+        } else if span.get_days() > 0 {
             span_vec.push(format!("{}days", span.get_days()));
         }
+    } else if span.get_days() > 0 {
+        span_vec.push(format!("{}days", span.get_days()));
     }
     if span.get_hours() > 0 {
         span_vec.push(format!("{}hrs", span.get_hours()));

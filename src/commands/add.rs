@@ -92,11 +92,9 @@ impl SimplePluginCommand for Add {
                 let jd = Timestamp::from_nanosecond(chrono_nanos as i128)
                     .map_err(|err| LabeledError::new(err.to_string()))?;
                 // add the duration nanoseconds to the jiff timestamp
-                let jd_plus_nanos =
-                    jd.checked_add(duration_nanos.nanoseconds())
-                        .map_err(|err| {
-                            LabeledError::new(format!("Error adding duration: {}", err.to_string()))
-                        })?;
+                let jd_plus_nanos = jd
+                    .checked_add(duration_nanos.nanoseconds())
+                    .map_err(|err| LabeledError::new(format!("Error adding duration: {err}")))?;
                 // get the chrono timezone
                 let tz_fixed = val.timezone();
                 // eprintln!("tz_fixed: {:?}", tz_fixed);
