@@ -1,6 +1,6 @@
 use super::utils::parse_datetime_string_add_nanos_optionally;
 use crate::DtPlugin;
-use jiff::{tz, tz::TimeZone, Timestamp, ToSpan, Zoned};
+use jiff::Zoned;
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
 use nu_protocol::{Category, Example, LabeledError, Signature, SyntaxShape, Value};
 
@@ -54,6 +54,16 @@ impl SimplePluginCommand for Add {
                     "2017-09-07T19:00:00-05:00[America/Chicago]",
                 )),
             },
+            Example {
+                example: "(dt now) | dt add 2wk",
+                description: "Add nushell duration of 2 weeks to the provided dt command date in the local timezone",
+                result: None,
+            },
+            Example {
+                example: "(date now) | dt add 2wk",
+                description: "Add nushell duration of 2 weeks to the provided date command date in the local timezone",
+                result: None,
+            },
         ]
     }
 
@@ -81,37 +91,41 @@ impl SimplePluginCommand for Add {
         let datetime = match input {
             Value::Date { val, .. } => {
                 // eprintln!("Date: {:?}", val);
-                let cur_date_time_zone = Zoned::now();
-                let local_tz = cur_date_time_zone.time_zone().clone();
+                let local_tz = Zoned::now().time_zone().clone();
 
-                // get chrono nanoseconds
-                let chrono_nanos = val.timestamp_nanos_opt().ok_or_else(|| {
-                    LabeledError::new("Expected a date or datetime string".to_string())
-                })?;
-                // create jiff timestamp from chrono nanoseconds
-                let jd = Timestamp::from_nanosecond(chrono_nanos as i128)
-                    .map_err(|err| LabeledError::new(err.to_string()))?;
-                // add the duration nanoseconds to the jiff timestamp
-                let jd_plus_nanos =
-                    jd.checked_add(duration_nanos.nanoseconds())
-                        .map_err(|err| {
-                            LabeledError::new(format!("Error adding duration: {}", err.to_string()))
-                        })?;
-                // get the chrono timezone
-                let tz_fixed = val.timezone();
-                // eprintln!("tz_fixed: {:?}", tz_fixed);
-                // TODO: This is a little wonky. If the timezone is UTC, we set the jiff local timezone.
-                // but what happens if the user wants UTC?
-                // we should probably allow the user to specify the timezone or just always output in UTC.
-                if tz_fixed.to_string() == "+00:00" {
-                    // set the jiff local timezone
-                    jd_plus_nanos.to_zoned(local_tz)
-                } else {
-                    // set the jiff zoned timezone
-                    jd_plus_nanos.to_zoned(TimeZone::fixed(tz::offset(
-                        (tz_fixed.local_minus_utc() / 3600) as i8,
-                    )))
-                }
+                // // get chrono nanoseconds
+                // let chrono_nanos = val.timestamp_nanos_opt().ok_or_else(|| {
+                //     LabeledError::new("Expected a date or datetime string".to_string())
+                // })?;
+                // // create jiff timestamp from chrono nanoseconds
+                // let jd = Timestamp::from_nanosecond(chrono_nanos as i128)
+                //     .map_err(|err| LabeledError::new(err.to_string()))?;
+                // // add the duration nanoseconds to the jiff timestamp
+                // let jd_plus_nanos = jd
+                //     .checked_add(duration_nanos.nanoseconds())
+                //     .map_err(|err| LabeledError::new(format!("Error adding duration: {err}")))?;
+                // // get the chrono timezone
+                // let tz_fixed = val.timezone();
+                // // eprintln!("tz_fixed: {:?}", tz_fixed);
+                // // TODO: This is a little wonky. If the timezone is UTC, we set the jiff local timezone.
+                // // but what happens if the user wants UTC?
+                // // we should probably allow the user to specify the timezone or just always output in UTC.
+                // if tz_fixed.to_string() == "+00:00" {
+                //     // set the jiff local timezone
+                //     jd_plus_nanos.to_zoned(local_tz)
+                // } else {
+                //     // set the jiff zoned timezone
+                //     jd_plus_nanos.to_zoned(TimeZone::fixed(tz::offset(
+                //         (tz_fixed.local_minus_utc() / 3600) as i8,
+                //     )))
+                // }
+
+                // so much easier just to output chrono as rfc 3339 and let jiff parse it
+                let zoned = parse_datetime_string_add_nanos_optionally(
+                    &val.to_rfc3339(),
+                    Some(duration_nanos),
+                )?;
+                zoned.with_time_zone(local_tz)
             }
             Value::String { val, .. } => {
                 // eprintln!("String: {:?}", val);

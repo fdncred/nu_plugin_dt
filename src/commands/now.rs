@@ -40,8 +40,7 @@ impl SimplePluginCommand for Now {
         call: &EvaluatedCall,
         _input: &Value,
     ) -> Result<Value, LabeledError> {
-        let now = Zoned::now();
-        let nanos = now.timestamp().as_nanosecond();
+        let nanos = Zoned::now().timestamp().as_nanosecond();
         convert_nanos_to_nushell_datetime_value(nanos, engine, call.head, false)
     }
 }

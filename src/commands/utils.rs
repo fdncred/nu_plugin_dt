@@ -37,8 +37,7 @@ pub fn parse_datetime_string_add_nanos_optionally(
     s: &str,
     duration_nanos: Option<i64>,
 ) -> Result<Zoned, LabeledError> {
-    let cur_date_time_zone = Zoned::now();
-    let tz = cur_date_time_zone.time_zone().clone();
+    let local_tz = Zoned::now().time_zone().clone();
 
     // if len is 10 it's a date only 2024-08-09
     //   USE parse_date or parse_timestamp (appends 00:00:00)
@@ -69,7 +68,7 @@ pub fn parse_datetime_string_add_nanos_optionally(
         // eprintln!("Date + Duration: {:?}", date_plus_duration);
 
         let zdt = date_plus_duration
-            .to_zoned(tz)
+            .to_zoned(local_tz)
             .map_err(|err| LabeledError::new(err.to_string()))?;
         // eprintln!("Zoned: {:?}", zdt);
 
@@ -78,7 +77,7 @@ pub fn parse_datetime_string_add_nanos_optionally(
     } else {
         // This is converting all dates to the current timezone, which is wrong
         let zdt = date_time
-            .to_zoned(tz)
+            .to_zoned(local_tz)
             .map_err(|err| LabeledError::new(err.to_string()))?;
         Ok(zdt)
         // Ok(date_time.to_zoned(tz))

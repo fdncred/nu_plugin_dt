@@ -19,7 +19,7 @@ impl SimplePluginCommand for Diff {
         Signature::build(self.name())
             .required(
                 "date",
-                SyntaxShape::String,
+                SyntaxShape::OneOf(vec![SyntaxShape::String, SyntaxShape::DateTime]),
                 "Date to return the difference from.",
             )
             .named(
@@ -65,6 +65,21 @@ impl SimplePluginCommand for Diff {
                 description: "Return the difference as years, months, and days in the iso8601 duration format",
                 result: Some(Value::test_string("P5y2m28d")),
             },
+            Example {
+                example: "'2019-05-10T09:59:12-07:00' | dt diff (dt now)",
+                description: "Return the difference in the iso8601 duration format using the current datetime from dt as input",
+                result: None,
+            },
+            Example {
+                example: "'2019-05-10T09:59:12-07:00' | dt diff (date now)",
+                description: "Return the difference in the iso8601 duration format using the current datetime from the date command as input",
+                result: None,
+            },
+            Example {
+                example: "(dt now) | dt diff (date now)",
+                description: "Return the difference in the iso8601 duration format using the current datetime from both dt and date commands as input",
+                result: None,
+            },
         ]
     }
 
@@ -83,22 +98,33 @@ impl SimplePluginCommand for Diff {
         let smallest_unit_opt: Option<String> = call.get_flag("smallest")?;
         let biggest_unit_opt: Option<String> = call.get_flag("biggest")?;
         let as_unit_opt: Option<String> = call.get_flag("as")?;
-        let input_date: String = call.req(0)?;
+        let input_date_provided: Value = call.req(0)?;
+
+        let input_date = match input_date_provided {
+            Value::String { val, .. } => val,
+            Value::Date { val, .. } => val.to_rfc3339(),
+            _ => {
+                return Err(
+                    LabeledError::new("Expected a date or datetime string".to_string())
+                        .with_label("Error", input_date_provided.span()),
+                );
+            }
+        };
+
+        // eprintln!("Input date: {:?}", input_date);
 
         if list {
             Ok(Value::list(get_unit_abbreviations(), call.head))
         } else {
             let provided_datetime = match input {
                 Value::Date { val, .. } => {
-                    eprintln!("Date: {:?}", val);
-                    return Err(LabeledError::new(
-                        "Expected a date or datetime string".to_string(),
-                    ));
+                    parse_datetime_string_add_nanos_optionally(&val.to_rfc3339(), None)?
                 }
                 Value::String { val, .. } => parse_datetime_string_add_nanos_optionally(val, None)?,
                 _ => return Err(LabeledError::new("Expected a date or datetime".to_string())),
             };
 
+            // TODO: Not sure all this civil::DateTime stuff is right
             let civil_date_provided = civil::DateTime::from(provided_datetime);
             let civil_input_datetime = input_date
                 .parse::<civil::DateTime>()
@@ -171,6 +197,7 @@ impl SimplePluginCommand for Diff {
     }
 }
 
+// TODO: Should probably move this to utils
 fn create_nushelly_duration_string(span: jiff::Span) -> String {
     let mut span_vec = vec![];
     if span.get_years() > 0 {
@@ -189,15 +216,11 @@ fn create_nushelly_duration_string(span: jiff::Span) -> String {
             if days > 0 {
                 span_vec.push(format!("{}days", days));
             }
-        } else {
-            if span.get_days() > 0 {
-                span_vec.push(format!("{}days", span.get_days()));
-            }
-        }
-    } else {
-        if span.get_days() > 0 {
+        } else if span.get_days() > 0 {
             span_vec.push(format!("{}days", span.get_days()));
         }
+    } else if span.get_days() > 0 {
+        span_vec.push(format!("{}days", span.get_days()));
     }
     if span.get_hours() > 0 {
         span_vec.push(format!("{}hrs", span.get_hours()));

@@ -40,8 +40,7 @@ impl SimplePluginCommand for UtcNow {
         call: &EvaluatedCall,
         _input: &Value,
     ) -> Result<Value, LabeledError> {
-        let now = Zoned::now();
-        let nowutc = now
+        let nowutc = Zoned::now()
             .intz("UTC")
             .map_err(|err| LabeledError::new(err.to_string()))?;
         let nanos = nowutc.timestamp().as_nanosecond();
