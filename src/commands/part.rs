@@ -2,7 +2,7 @@ use super::utils::{
     get_part_from_zoned_as_i16, get_unit_abbreviations, parse_datetime_string_add_nanos_optionally,
 };
 use crate::DtPlugin;
-use jiff::{tz, tz::TimeZone, Timestamp};
+use jiff::Zoned;
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
 use nu_protocol::{Category, Example, LabeledError, Signature, SyntaxShape, Value};
 
@@ -47,6 +47,17 @@ impl SimplePluginCommand for Part {
                 description: "Return the month part of the provided nushell datetime",
                 result: Some(Value::test_int(8)),
             },
+            Example {
+                example: "(date now) | dt part mon",
+                description:
+                    "Return the month part of the provided nushell datetime from the date command",
+                result: Some(Value::test_int(8)),
+            },
+            Example {
+                example: "(dt now) | dt part wk",
+                description: "Return the week part of the provided datetime from the dt command",
+                result: Some(Value::test_int(8)),
+            },
         ]
     }
 
@@ -77,19 +88,25 @@ impl SimplePluginCommand for Part {
             } else {
                 let datetime = match input {
                     Value::Date { val, .. } => {
-                        // get chrono nanoseconds
-                        let chrono_nanos = val.timestamp_nanos_opt().ok_or_else(|| {
-                            LabeledError::new("Expected a date or datetime string".to_string())
-                        })?;
-                        // create jiff timestamp from chrono nanoseconds
-                        let jd = Timestamp::from_nanosecond(chrono_nanos as i128)
-                            .map_err(|err| LabeledError::new(err.to_string()))?;
-                        // get the chrono timezone
-                        let tz_fixed = val.timezone();
-                        // set the jiff zoned timezone
-                        jd.to_zoned(TimeZone::fixed(tz::offset(
-                            (tz_fixed.local_minus_utc() / 3600) as i8,
-                        )))
+                        // // get chrono nanoseconds
+                        // let chrono_nanos = val.timestamp_nanos_opt().ok_or_else(|| {
+                        //     LabeledError::new("Expected a date or datetime string".to_string())
+                        // })?;
+                        // // create jiff timestamp from chrono nanoseconds
+                        // let jd = Timestamp::from_nanosecond(chrono_nanos as i128)
+                        //     .map_err(|err| LabeledError::new(err.to_string()))?;
+                        // // get the chrono timezone
+                        // let tz_fixed = val.timezone();
+                        // // set the jiff zoned timezone
+                        // jd.to_zoned(TimeZone::fixed(tz::offset(
+                        //     (tz_fixed.local_minus_utc() / 3600) as i8,
+                        // )))
+
+                        let local_tz = Zoned::now().time_zone().clone();
+                        // so much easier just to output chrono as rfc 3339 and let jiff parse it
+                        let zoned =
+                            parse_datetime_string_add_nanos_optionally(&val.to_rfc3339(), None)?;
+                        zoned.with_time_zone(local_tz)
                     }
                     Value::String { val, .. } => {
                         // eprintln!("Zoned: {:?}", zdt);

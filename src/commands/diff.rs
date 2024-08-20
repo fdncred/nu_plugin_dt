@@ -65,6 +65,21 @@ impl SimplePluginCommand for Diff {
                 description: "Return the difference as years, months, and days in the iso8601 duration format",
                 result: Some(Value::test_string("P5y2m28d")),
             },
+            Example {
+                example: "'2019-05-10T09:59:12-07:00' | dt diff (dt now)",
+                description: "Return the difference in the iso8601 duration format using the current datetime from dt as input",
+                result: None,
+            },
+            Example {
+                example: "'2019-05-10T09:59:12-07:00' | dt diff (date now)",
+                description: "Return the difference in the iso8601 duration format using the current datetime from the date command as input",
+                result: None,
+            },
+            Example {
+                example: "(dt now) | dt diff (date now)",
+                description: "Return the difference in the iso8601 duration format using the current datetime from both dt and date commands as input",
+                result: None,
+            },
         ]
     }
 
@@ -103,15 +118,13 @@ impl SimplePluginCommand for Diff {
         } else {
             let provided_datetime = match input {
                 Value::Date { val, .. } => {
-                    eprintln!("Date: {:?}", val);
-                    return Err(LabeledError::new(
-                        "Expected a date or datetime string".to_string(),
-                    ));
+                    parse_datetime_string_add_nanos_optionally(&val.to_rfc3339(), None)?
                 }
                 Value::String { val, .. } => parse_datetime_string_add_nanos_optionally(val, None)?,
                 _ => return Err(LabeledError::new("Expected a date or datetime".to_string())),
             };
 
+            // TODO: Not sure all this civil::DateTime stuff is right
             let civil_date_provided = civil::DateTime::from(provided_datetime);
             let civil_input_datetime = input_date
                 .parse::<civil::DateTime>()
@@ -184,6 +197,7 @@ impl SimplePluginCommand for Diff {
     }
 }
 
+// TODO: Should probably move this to utils
 fn create_nushelly_duration_string(span: jiff::Span) -> String {
     let mut span_vec = vec![];
     if span.get_years() > 0 {
