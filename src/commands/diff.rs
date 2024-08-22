@@ -44,7 +44,7 @@ impl SimplePluginCommand for Diff {
             .category(Category::Date)
     }
 
-    fn usage(&self) -> &str {
+    fn description(&self) -> &str {
         "Return the difference between two dates or datetimes provided"
     }
 

@@ -26,7 +26,7 @@ impl SimplePluginCommand for Part {
             .category(Category::Date)
     }
 
-    fn usage(&self) -> &str {
+    fn description(&self) -> &str {
         "Return the specified part of a date and time provided"
     }
 

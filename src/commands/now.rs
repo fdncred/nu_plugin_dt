@@ -17,7 +17,7 @@ impl SimplePluginCommand for Now {
         Signature::build(self.name()).category(Category::Date)
     }
 
-    fn usage(&self) -> &str {
+    fn description(&self) -> &str {
         "Return the current date and time"
     }
 

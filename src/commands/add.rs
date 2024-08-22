@@ -23,7 +23,7 @@ impl SimplePluginCommand for Add {
             .category(Category::Date)
     }
 
-    fn usage(&self) -> &str {
+    fn description(&self) -> &str {
         "Add a duration to the provided in date and time"
     }
 
