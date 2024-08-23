@@ -22,7 +22,7 @@ impl SimplePluginCommand for Add {
             .category(Category::Date)
     }
 
-    fn usage(&self) -> &str {
+    fn description(&self) -> &str {
         "Add a duration to the provided in date and time"
     }
 
@@ -92,6 +92,11 @@ impl SimplePluginCommand for Add {
 
         let datetime = match input {
             Value::Date { val, .. } => {
+                dbg!(val.timezone());
+                dbg!(val.offset());
+                dbg!(val.fixed_offset());
+                dbg!(val.to_rfc2822());
+                dbg!(val.to_rfc3339());
                 // eprintln!("Date: {:?}", val);
                 // let local_tz = Zoned::now().time_zone().clone();
 

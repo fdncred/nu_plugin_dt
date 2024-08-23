@@ -148,3 +148,31 @@ dt now
 # dt utcnow (get the current utc datetime)
 dt utcnow
 ```
+
+# Formats we should be able to parse
+
+## RFC-2822
+- Wed, 10 Jan 2024 05:34:45 -0500
+- Wed, 10 Jan 2024 05:34:45 EST
+- Apr 1, 2022 20:46:15 [America/New_York]
+- Apr 1, 2022 20:46:15 -0400
+- Apr 1, 2022 20:46:15
+
+## RFC-9557 (extension to RFC-3339) ISO-8601
+- 2022-07-08T00:14:07+08:45[+08:45]
+- 2022-07-08T00:14:07+01:00[Europe/Paris]
+- 1996-12-19T16:39:57-08:00
+- 1996-12-19T16:39:57-08:00[America/Los_Angeles]
+- 1976-11-18T12:34:56.987654321-02:30[America/St_Johns]
+- 1976-11-18T12:34:56.987654321
+
+## Date
+### American
+- 07/09/24
+- 7/9/24
+### ISO
+- 2024-07-09
+- 2024-7-9
+
+## Time
+- 23:59:08

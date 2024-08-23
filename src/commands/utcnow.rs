@@ -17,7 +17,7 @@ impl SimplePluginCommand for UtcNow {
         Signature::build(self.name()).category(Category::Date)
     }
 
-    fn usage(&self) -> &str {
+    fn description(&self) -> &str {
         "Return the current date and time in UTC"
     }
 

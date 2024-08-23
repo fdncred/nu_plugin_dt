@@ -15,7 +15,7 @@ impl SimplePluginCommand for Dt {
         Signature::build(self.name()).category(Category::Date)
     }
 
-    fn usage(&self) -> &str {
+    fn description(&self) -> &str {
         "Return information about the dt set of commands"
     }
 
