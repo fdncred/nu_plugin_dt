@@ -2,7 +2,7 @@ use super::utils::{
     get_unit_abbreviations, get_unit_from_unit_string, parse_datetime_string_add_nanos_optionally,
 };
 use crate::DtPlugin;
-use jiff::{civil, civil::DateTimeDifference, RoundMode, Unit};
+use jiff::{RoundMode, Unit, ZonedDifference};
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
 use nu_protocol::{Category, Example, LabeledError, Signature, SyntaxShape, Value};
 
@@ -98,37 +98,38 @@ impl SimplePluginCommand for Diff {
         let smallest_unit_opt: Option<String> = call.get_flag("smallest")?;
         let biggest_unit_opt: Option<String> = call.get_flag("biggest")?;
         let as_unit_opt: Option<String> = call.get_flag("as")?;
-        let input_date_provided: Value = call.req(0)?;
+        let parameter_datetime_provided: Value = call.req(0)?;
 
-        let input_date = match input_date_provided {
+        let parameter_datetime = match parameter_datetime_provided {
             Value::String { val, .. } => val,
             Value::Date { val, .. } => val.to_rfc3339(),
             _ => {
                 return Err(
                     LabeledError::new("Expected a date or datetime string".to_string())
-                        .with_label("Error", input_date_provided.span()),
+                        .with_label("Error", parameter_datetime_provided.span()),
                 );
             }
         };
 
-        // eprintln!("Input date: {:?}", input_date);
+        eprintln!("    Input date: {:?}", input.clone().into_string()?);
+        eprintln!("Parameter date: {:?}", parameter_datetime);
 
         if list {
             Ok(Value::list(get_unit_abbreviations(), call.head))
         } else {
-            let provided_datetime = match input {
+            let zoned_input_datetime = match input {
                 Value::Date { val, .. } => {
+                    eprintln!("Date rfc3339: {:?}", &val.to_rfc3339());
                     parse_datetime_string_add_nanos_optionally(&val.to_rfc3339(), None)?
                 }
                 Value::String { val, .. } => parse_datetime_string_add_nanos_optionally(val, None)?,
                 _ => return Err(LabeledError::new("Expected a date or datetime".to_string())),
             };
 
-            // TODO: Not sure all this civil::DateTime stuff is right
-            let civil_date_provided = civil::DateTime::from(provided_datetime);
-            let civil_input_datetime = input_date
-                .parse::<civil::DateTime>()
-                .map_err(|err| LabeledError::new(format!("Error parsing input date: {}", err)))?;
+            // TODO: Make all these civil datetimes zoned datetime
+            // let civil_input_datetime = civil::DateTime::from(zoned_input_datetime);
+            let zoned_parameter_datetime =
+                parse_datetime_string_add_nanos_optionally(&parameter_datetime, None)?;
 
             if (biggest_unit_opt.is_some() || smallest_unit_opt.is_some()) && as_unit_opt.is_some()
             {
@@ -140,9 +141,9 @@ impl SimplePluginCommand for Diff {
             // if there is an as_unit, use that unit as the smallest and biggest unit
             if let Some(as_unit_string) = as_unit_opt {
                 let as_unit = get_unit_from_unit_string(as_unit_string.clone())?;
-                let span = civil_date_provided
+                let span = zoned_input_datetime
                     .until(
-                        DateTimeDifference::new(civil_input_datetime)
+                        ZonedDifference::new(&zoned_parameter_datetime)
                             .smallest(as_unit)
                             .largest(as_unit)
                             .mode(RoundMode::HalfExpand),
@@ -179,9 +180,9 @@ impl SimplePluginCommand for Diff {
                     Unit::Year
                 };
 
-                let span = civil_date_provided
+                let span = zoned_input_datetime
                     .until(
-                        DateTimeDifference::new(civil_input_datetime)
+                        ZonedDifference::new(&zoned_parameter_datetime)
                             .smallest(smallest_unit)
                             .largest(biggest_unit)
                             .mode(RoundMode::HalfExpand),

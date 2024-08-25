@@ -1,7 +1,4 @@
-use jiff::fmt::strtime::BrokenDownTime;
-use jiff::{civil, fmt::temporal::DateTimeParser, ToSpan, Unit, Zoned};
-use jiff::{civil::date, fmt::strtime, Timestamp};
-use jiff::{SignedDuration, Span};
+use jiff::{civil, fmt::temporal::DateTimeParser, tz::TimeZone, ToSpan, Unit, Zoned};
 use nu_plugin::{EngineInterface, EvaluatedCall};
 use nu_protocol::{record, IntoSpanned, LabeledError, PipelineData, Span as NuSpan, Value};
 
@@ -40,9 +37,9 @@ pub fn parse_datetime_string_add_nanos_optionally(
     s: &str,
     duration_nanos: Option<i64>,
 ) -> Result<Zoned, LabeledError> {
-    dbg!(s);
-    let local_now = Zoned::now();
-    let local_tz = local_now.time_zone().clone();
+    // dbg!(s);
+    // let local_now = Zoned::now();
+    // let local_tz = local_now.time_zone().clone();
 
     // From https://github.com/BurntSushi/jiff/discussions/112#discussioncomment-10421693
     // Or alternatively, just try parsing in order of least flexible to most flexible:
@@ -63,19 +60,19 @@ pub fn parse_datetime_string_add_nanos_optionally(
         zdt
     } else if let Ok(ts) = PARSER.parse_timestamp(s) {
         eprintln!("Timestamp: {:?}", ts);
-        ts.to_zoned(local_tz)
+        ts.to_zoned(TimeZone::system())
     } else if let Ok(dt) = PARSER.parse_datetime(s) {
         eprint!("Datetime: {:?}", dt);
-        dt.to_zoned(local_tz)
+        dt.to_zoned(TimeZone::system())
             .map_err(|err| LabeledError::new(err.to_string()))?
     } else if let Ok(date) = PARSER.parse_date(s) {
         eprintln!("Date: {:?}", date);
-        date.to_zoned(local_tz)
+        date.to_zoned(TimeZone::system())
             .map_err(|err| LabeledError::new(err.to_string()))?
     } else if let Ok(time) = PARSER.parse_time(s) {
         eprintln!("Time: {:?}", time);
-        time.to_datetime(local_now.datetime().date())
-            .to_zoned(local_tz)
+        time.to_datetime(Zoned::now().datetime().date())
+            .to_zoned(TimeZone::system())
             .map_err(|err| LabeledError::new(err.to_string()))?
         // } else if let Ok(span) = Span::parse(s) {
         //     return span.to_zoned(local_tz);
@@ -150,8 +147,9 @@ pub fn parse_datetime_string_add_nanos_optionally(
     //     .map_err(|err| LabeledError::new(err.to_string()))?;
     // // eprintln!("Date: {:?}", date);
 
-    dbg!(date_time.clone());
-    dbg!(date_time.clone().strftime("%Z"));
+    // dbg!(date_time.clone());
+    // dbg!(date_time.clone().strftime("%Z"));
+
     // eprintln!(
     //     "BrokenDown: {}",
     //     BrokenDownTime::from(date_time)
