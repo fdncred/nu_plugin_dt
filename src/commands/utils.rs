@@ -360,3 +360,65 @@ pub fn get_unit_abbreviations() -> Vec<Value> {
 
     records
 }
+
+pub fn create_nushelly_duration_string(span: jiff::Span) -> String {
+    let mut span_vec = vec![];
+    if span.get_years() > 0 {
+        span_vec.push(format!("{}yrs", span.get_years()));
+    }
+    if span.get_months() > 0 {
+        span_vec.push(format!("{}mths", span.get_months()));
+    }
+    // if we have more than 6 days, show weeks
+    let days_span = span.get_days();
+    if days_span > 6 {
+        let weeks = span.get_weeks();
+        if weeks == 0 {
+            let (weeks, days) = (days_span / 7, days_span % 7);
+            span_vec.push(format!("{}wks", weeks));
+            if days > 0 {
+                span_vec.push(format!("{}days", days));
+            }
+        } else if span.get_days() > 0 {
+            span_vec.push(format!("{}days", span.get_days()));
+        }
+    } else if span.get_days() > 0 {
+        span_vec.push(format!("{}days", span.get_days()));
+    }
+    if span.get_hours() > 0 {
+        span_vec.push(format!("{}hrs", span.get_hours()));
+    }
+    if span.get_minutes() > 0 {
+        span_vec.push(format!("{}mins", span.get_minutes()));
+    }
+    if span.get_seconds() > 0 {
+        span_vec.push(format!("{}secs", span.get_seconds()));
+    }
+    if span.get_milliseconds() > 0 {
+        span_vec.push(format!("{}ms", span.get_milliseconds()));
+    }
+    if span.get_microseconds() > 0 {
+        span_vec.push(format!("{}µs", span.get_microseconds()));
+    }
+    if span.get_nanoseconds() > 0 {
+        span_vec.push(format!("{}ns", span.get_nanoseconds()));
+    }
+
+    span_vec.join(" ").trim().to_string()
+}
+
+pub fn get_single_duration_unit_from_span(as_unit: Unit, span: jiff::Span) -> String {
+    let span_str = match as_unit {
+        Unit::Year => format!("{}yrs", span.get_years()),
+        Unit::Month => format!("{}mths", span.get_months()),
+        Unit::Week => format!("{}wks", span.get_weeks()),
+        Unit::Day => format!("{}days", span.get_days()),
+        Unit::Hour => format!("{}hrs", span.get_hours()),
+        Unit::Minute => format!("{}mins", span.get_minutes()),
+        Unit::Second => format!("{}secs", span.get_seconds()),
+        Unit::Millisecond => format!("{}ms", span.get_milliseconds()),
+        Unit::Microsecond => format!("{}µs", span.get_microseconds()),
+        Unit::Nanosecond => format!("{}ns", span.get_nanoseconds()),
+    };
+    span_str
+}
