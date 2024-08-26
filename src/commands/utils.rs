@@ -408,7 +408,7 @@ pub fn create_nushelly_duration_string(span: jiff::Span) -> String {
 }
 
 pub fn get_single_duration_unit_from_span(as_unit: Unit, span: jiff::Span) -> String {
-    let span_str = match as_unit {
+    match as_unit {
         Unit::Year => format!("{}yrs", span.get_years()),
         Unit::Month => format!("{}mths", span.get_months()),
         Unit::Week => format!("{}wks", span.get_weeks()),
@@ -419,6 +419,5 @@ pub fn get_single_duration_unit_from_span(as_unit: Unit, span: jiff::Span) -> St
         Unit::Millisecond => format!("{}ms", span.get_milliseconds()),
         Unit::Microsecond => format!("{}µs", span.get_microseconds()),
         Unit::Nanosecond => format!("{}ns", span.get_nanoseconds()),
-    };
-    span_str
+    }
 }
