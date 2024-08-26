@@ -87,6 +87,37 @@ impl SimplePluginCommand for Diff {
         vec!["date", "time", "subtraction", "math"]
     }
 
+    // GOAL: Match https://www.timeanddate.com/date/timezoneduration.html?
+    // https://www.timeanddate.com/date/timezoneduration.html?d1=10&m1=05&y1=2019&d2=20&m2=08&y2=2024&h1=09&i1=59&s1=12&h2=10&i2=24&s2=11&
+    // '2019-05-10T09:59:12-07:00' | dt diff '2024-08-20T10:24:11.693666300-05:00'
+    // P5y3m9dT22h24m59.6936663s
+    // 5yrs 3mths 1wks 2days 22hrs 24mins 59secs 693ms 666µs 300ns
+
+    // From: Friday, May 10, 2019 at 9:59:12 am Los Angeles time
+    // To: Tuesday, August 20, 2024 at 10:24:11 am Little Rock time
+
+    // Result: 1928 days, 22 hours, 24 minutes and 59 seconds
+    // The duration is 1928 days, 22 hours, 24 minutes and 59 seconds
+
+    // Or 5 years, 3 months, 9 days, 22 hours, 24 minutes, 59 seconds
+
+    // Or 63 months, 9 days, 22 hours, 24 minutes, 59 seconds
+
+    // Alternative time units
+    // 1928 days, 22 hours, 24 minutes and 59 seconds can be converted to one of these units:
+
+    // 166,659,899 seconds
+    // 2,777,664 minutes (rounded down)
+    // 46,294 hours (rounded down)
+    // 1928 days (rounded down)
+    // 275 weeks (rounded down)
+    // 528.48% of a common year (365 days)
+    // ◀ Make adjustment and calculate againStart Again ▶
+
+    // Event	    Los Angeles time	        Little Rock time	        UTC time
+    // Start time	May 10, 2019 at 9:59:12 am	May 10, 2019 at 11:59:12 am	May 10, 2019 at 4:59:12 pm
+    // End time	    Aug 20, 2024 at 8:24:11 am	Aug 20, 2024 at 10:24:11 am	Aug 20, 2024 at 3:24:11 pm
+
     fn run(
         &self,
         _plugin: &DtPlugin,
