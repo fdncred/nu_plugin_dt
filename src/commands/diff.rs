@@ -173,6 +173,7 @@ fn calculate_date_diff(
         }
     };
 
+    // convert piped_in_input into a jiff::Zoned
     let zoned_input_datetime = match piped_in_input {
         Value::Date { val, .. } => {
             eprintln!("Date rfc3339: {:?}", &val.to_rfc3339());
@@ -182,9 +183,11 @@ fn calculate_date_diff(
         _ => return Err(LabeledError::new("Expected a date or datetime".to_string())),
     };
 
+    // convert parameter_datetime into a jiff::Zoned
     let zoned_parameter_datetime =
         parse_datetime_string_add_nanos_optionally(&parameter_datetime, None)?;
 
+    // Check to see if biggest_unit_opt and smallest_unit_opt are both provided or as_unit_opt is provided
     if (biggest_unit_opt.is_some() || smallest_unit_opt.is_some()) && as_unit_opt.is_some() {
         return Err(LabeledError::new(
             "Please provide either smallest, biggest or as unit. As unit is mutually exclusive from smallest and biggest.".to_string(),
@@ -194,6 +197,7 @@ fn calculate_date_diff(
     // if there is an as_unit, use that unit as the smallest and biggest unit
     if let Some(as_unit_string) = as_unit_opt {
         let as_unit = get_unit_from_unit_string(as_unit_string.clone())?;
+        // Since we have jiff::Zoned datetime types, use ZonedDifference to calculate the difference
         let span = zoned_input_datetime
             .until(
                 ZonedDifference::new(&zoned_parameter_datetime)
@@ -220,6 +224,7 @@ fn calculate_date_diff(
             Unit::Year
         };
 
+        // Since we have jiff::Zoned datetime types, use ZonedDifference to calculate the difference
         let span = zoned_input_datetime
             .until(
                 ZonedDifference::new(&zoned_parameter_datetime)
@@ -229,6 +234,7 @@ fn calculate_date_diff(
             )
             .map_err(|err| LabeledError::new(format!("Error calculating difference: {}", err)))?;
 
+        // We want to return a nushelly duration string with all units
         let span_str = create_nushelly_duration_string(span);
         Ok(Value::string(format!("{}\n{}", span, span_str), call_span))
     }
