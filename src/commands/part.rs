@@ -2,7 +2,6 @@ use super::utils::{
     get_part_from_zoned_as_i16, get_unit_abbreviations, parse_datetime_string_add_nanos_optionally,
 };
 use crate::DtPlugin;
-use jiff::Zoned;
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
 use nu_protocol::{Category, Example, LabeledError, Signature, SyntaxShape, Value};
 
@@ -102,11 +101,9 @@ impl SimplePluginCommand for Part {
                         //     (tz_fixed.local_minus_utc() / 3600) as i8,
                         // )))
 
-                        let local_tz = Zoned::now().time_zone().clone();
                         // so much easier just to output chrono as rfc 3339 and let jiff parse it
-                        let zoned =
-                            parse_datetime_string_add_nanos_optionally(&val.to_rfc3339(), None)?;
-                        zoned.with_time_zone(local_tz)
+
+                        parse_datetime_string_add_nanos_optionally(&val.to_rfc3339(), None)?
                     }
                     Value::String { val, .. } => {
                         // eprintln!("Zoned: {:?}", zdt);

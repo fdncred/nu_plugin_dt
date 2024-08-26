@@ -1,10 +1,11 @@
 use super::utils::{
-    get_unit_abbreviations, get_unit_from_unit_string, parse_datetime_string_add_nanos_optionally,
+    create_nushelly_duration_string, get_single_duration_unit_from_span, get_unit_abbreviations,
+    get_unit_from_unit_string, parse_datetime_string_add_nanos_optionally,
 };
 use crate::DtPlugin;
-use jiff::{civil, civil::DateTimeDifference, RoundMode, Unit};
+use jiff::{RoundMode, Unit, ZonedDifference};
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
-use nu_protocol::{Category, Example, LabeledError, Signature, SyntaxShape, Value};
+use nu_protocol::{Category, Example, LabeledError, Signature, Span, SyntaxShape, Value};
 
 pub struct Diff;
 
@@ -53,17 +54,17 @@ impl SimplePluginCommand for Diff {
             Example {
                 example: "'2019-05-10T09:59:12-07:00' | dt diff '2024-08-07T09:36:42.367322100-05:00'",
                 description: "Return the difference in the iso8601 duration format",
-                result: Some(Value::test_string("P5y2m27dT23h37m30.3673221s")),
+                result: Some(Value::test_string("P5y2m27dT21h37m30.3673221s\n5yrs 2mths 3wks 6days 21hrs 37mins 30secs 367ms 322µs 100ns")),
             },
             Example {
                 example: "'2019-05-10T09:59:12-07:00' | dt diff '2024-08-07T09:36:42.367322100-05:00' --as hr",
                 description: "Return the difference as hours in the iso8601 duration format",
-                result: Some(Value::test_string("PT45984h")),
+                result: Some(Value::test_string("PT45982h\n45982hrs")),
             },
             Example {
                 example: "'2019-05-10T09:59:12-07:00' | dt diff '2024-08-07T09:36:42.367322100-05:00' --smallest day --biggest year",
                 description: "Return the difference as years, months, and days in the iso8601 duration format",
-                result: Some(Value::test_string("P5y2m28d")),
+                result: Some(Value::test_string("P5y2m28d\n5yrs 2mths 4wks")),
             },
             Example {
                 example: "'2019-05-10T09:59:12-07:00' | dt diff (dt now)",
@@ -87,6 +88,37 @@ impl SimplePluginCommand for Diff {
         vec!["date", "time", "subtraction", "math"]
     }
 
+    // GOAL: Match https://www.timeanddate.com/date/timezoneduration.html?
+    // https://www.timeanddate.com/date/timezoneduration.html?d1=10&m1=05&y1=2019&d2=20&m2=08&y2=2024&h1=09&i1=59&s1=12&h2=10&i2=24&s2=11&
+    // '2019-05-10T09:59:12-07:00' | dt diff '2024-08-20T10:24:11.693666300-05:00'
+    // P5y3m9dT22h24m59.6936663s
+    // 5yrs 3mths 1wks 2days 22hrs 24mins 59secs 693ms 666µs 300ns
+
+    // From: Friday, May 10, 2019 at 9:59:12 am Los Angeles time
+    // To: Tuesday, August 20, 2024 at 10:24:11 am Little Rock time
+
+    // Result: 1928 days, 22 hours, 24 minutes and 59 seconds
+    // The duration is 1928 days, 22 hours, 24 minutes and 59 seconds
+
+    // Or 5 years, 3 months, 9 days, 22 hours, 24 minutes, 59 seconds
+
+    // Or 63 months, 9 days, 22 hours, 24 minutes, 59 seconds
+
+    // Alternative time units
+    // 1928 days, 22 hours, 24 minutes and 59 seconds can be converted to one of these units:
+
+    // 166,659,899 seconds
+    // 2,777,664 minutes (rounded down)
+    // 46,294 hours (rounded down)
+    // 1928 days (rounded down)
+    // 275 weeks (rounded down)
+    // 528.48% of a common year (365 days)
+    // ◀ Make adjustment and calculate againStart Again ▶
+
+    // Event	    Los Angeles time	        Little Rock time	        UTC time
+    // Start time	May 10, 2019 at 9:59:12 am	May 10, 2019 at 11:59:12 am	May 10, 2019 at 4:59:12 pm
+    // End time	    Aug 20, 2024 at 8:24:11 am	Aug 20, 2024 at 10:24:11 am	Aug 20, 2024 at 3:24:11 pm
+
     fn run(
         &self,
         _plugin: &DtPlugin,
@@ -98,161 +130,201 @@ impl SimplePluginCommand for Diff {
         let smallest_unit_opt: Option<String> = call.get_flag("smallest")?;
         let biggest_unit_opt: Option<String> = call.get_flag("biggest")?;
         let as_unit_opt: Option<String> = call.get_flag("as")?;
-        let input_date_provided: Value = call.req(0)?;
+        let parameter_datetime_provided: Value = call.req(0)?;
+        let span = call.head;
 
-        let input_date = match input_date_provided {
-            Value::String { val, .. } => val,
-            Value::Date { val, .. } => val.to_rfc3339(),
-            _ => {
-                return Err(
-                    LabeledError::new("Expected a date or datetime string".to_string())
-                        .with_label("Error", input_date_provided.span()),
-                );
-            }
-        };
-
-        // eprintln!("Input date: {:?}", input_date);
+        eprintln!("    Input date: {:?}", input.clone().into_string()?);
+        eprintln!(
+            "Parameter date: {:?}",
+            parameter_datetime_provided.clone().into_string()?
+        );
 
         if list {
             Ok(Value::list(get_unit_abbreviations(), call.head))
         } else {
-            let provided_datetime = match input {
-                Value::Date { val, .. } => {
-                    parse_datetime_string_add_nanos_optionally(&val.to_rfc3339(), None)?
-                }
-                Value::String { val, .. } => parse_datetime_string_add_nanos_optionally(val, None)?,
-                _ => return Err(LabeledError::new("Expected a date or datetime".to_string())),
-            };
-
-            // TODO: Not sure all this civil::DateTime stuff is right
-            let civil_date_provided = civil::DateTime::from(provided_datetime);
-            let civil_input_datetime = input_date
-                .parse::<civil::DateTime>()
-                .map_err(|err| LabeledError::new(format!("Error parsing input date: {}", err)))?;
-
-            if (biggest_unit_opt.is_some() || smallest_unit_opt.is_some()) && as_unit_opt.is_some()
-            {
-                return Err(LabeledError::new(
-                    "Please provide either smallest, biggest or as unit. As unit is mutually exclusive from smallest and biggest.".to_string(),
-                ));
-            }
-
-            // if there is an as_unit, use that unit as the smallest and biggest unit
-            if let Some(as_unit_string) = as_unit_opt {
-                let as_unit = get_unit_from_unit_string(as_unit_string.clone())?;
-                let span = civil_date_provided
-                    .until(
-                        DateTimeDifference::new(civil_input_datetime)
-                            .smallest(as_unit)
-                            .largest(as_unit)
-                            .mode(RoundMode::HalfExpand),
-                    )
-                    .map_err(|err| {
-                        LabeledError::new(format!("Error calculating difference: {}", err))
-                    })?;
-
-                // We only want to return the span in the unit asked for
-                let span_str = match as_unit {
-                    Unit::Year => format!("{}yrs", span.get_years()),
-                    Unit::Month => format!("{}mths", span.get_months()),
-                    Unit::Week => format!("{}wks", span.get_weeks()),
-                    Unit::Day => format!("{}days", span.get_days()),
-                    Unit::Hour => format!("{}hrs", span.get_hours()),
-                    Unit::Minute => format!("{}mins", span.get_minutes()),
-                    Unit::Second => format!("{}secs", span.get_seconds()),
-                    Unit::Millisecond => format!("{}ms", span.get_milliseconds()),
-                    Unit::Microsecond => format!("{}µs", span.get_microseconds()),
-                    Unit::Nanosecond => format!("{}ns", span.get_nanoseconds()),
-                };
-                Ok(Value::string(format!("{}\n{}", span, span_str), call.head))
-            } else {
-                // otherwise, use the smallest and biggest units provided
-                let smallest_unit = if let Some(smallest_unit_string) = smallest_unit_opt {
-                    get_unit_from_unit_string(smallest_unit_string.clone())?
-                } else {
-                    Unit::Nanosecond
-                };
-
-                let biggest_unit = if let Some(biggest_unit_string) = biggest_unit_opt {
-                    get_unit_from_unit_string(biggest_unit_string.clone())?
-                } else {
-                    Unit::Year
-                };
-
-                let span = civil_date_provided
-                    .until(
-                        DateTimeDifference::new(civil_input_datetime)
-                            .smallest(smallest_unit)
-                            .largest(biggest_unit)
-                            .mode(RoundMode::HalfExpand),
-                    )
-                    .map_err(|err| {
-                        LabeledError::new(format!("Error calculating difference: {}", err))
-                    })?;
-
-                let span_str = create_nushelly_duration_string(span);
-                Ok(Value::string(format!("{}\n{}", span, span_str), call.head))
-            }
+            calculate_date_diff(
+                parameter_datetime_provided,
+                input,
+                biggest_unit_opt,
+                smallest_unit_opt,
+                as_unit_opt,
+                span,
+            )
         }
     }
 }
 
-// TODO: Should probably move this to utils
-fn create_nushelly_duration_string(span: jiff::Span) -> String {
-    let mut span_vec = vec![];
-    if span.get_years() > 0 {
-        span_vec.push(format!("{}yrs", span.get_years()));
-    }
-    if span.get_months() > 0 {
-        span_vec.push(format!("{}mths", span.get_months()));
-    }
-    // if we have more than 6 days, show weeks
-    let days_span = span.get_days();
-    if days_span > 6 {
-        let weeks = span.get_weeks();
-        if weeks == 0 {
-            let (weeks, days) = (days_span / 7, days_span % 7);
-            span_vec.push(format!("{}wks", weeks));
-            if days > 0 {
-                span_vec.push(format!("{}days", days));
-            }
-        } else if span.get_days() > 0 {
-            span_vec.push(format!("{}days", span.get_days()));
+fn calculate_date_diff(
+    parameter_datetime_provided: Value,
+    piped_in_input: &Value,
+    biggest_unit_opt: Option<String>,
+    smallest_unit_opt: Option<String>,
+    as_unit_opt: Option<String>,
+    call_span: Span,
+) -> Result<Value, LabeledError> {
+    let parameter_datetime = match parameter_datetime_provided {
+        Value::String { val, .. } => val,
+        Value::Date { val, .. } => val.to_rfc3339(),
+        _ => {
+            return Err(
+                LabeledError::new("Expected a date or datetime string".to_string())
+                    .with_label("Error", parameter_datetime_provided.span()),
+            );
         }
-    } else if span.get_days() > 0 {
-        span_vec.push(format!("{}days", span.get_days()));
-    }
-    if span.get_hours() > 0 {
-        span_vec.push(format!("{}hrs", span.get_hours()));
-    }
-    if span.get_minutes() > 0 {
-        span_vec.push(format!("{}mins", span.get_minutes()));
-    }
-    if span.get_seconds() > 0 {
-        span_vec.push(format!("{}secs", span.get_seconds()));
-    }
-    if span.get_milliseconds() > 0 {
-        span_vec.push(format!("{}ms", span.get_milliseconds()));
-    }
-    if span.get_microseconds() > 0 {
-        span_vec.push(format!("{}µs", span.get_microseconds()));
-    }
-    if span.get_nanoseconds() > 0 {
-        span_vec.push(format!("{}ns", span.get_nanoseconds()));
+    };
+
+    // convert piped_in_input into a jiff::Zoned
+    let zoned_input_datetime = match piped_in_input {
+        Value::Date { val, .. } => {
+            eprintln!("Date rfc3339: {:?}", &val.to_rfc3339());
+            parse_datetime_string_add_nanos_optionally(&val.to_rfc3339(), None)?
+        }
+        Value::String { val, .. } => parse_datetime_string_add_nanos_optionally(val, None)?,
+        _ => return Err(LabeledError::new("Expected a date or datetime".to_string())),
+    };
+
+    // convert parameter_datetime into a jiff::Zoned
+    let zoned_parameter_datetime =
+        parse_datetime_string_add_nanos_optionally(&parameter_datetime, None)?;
+
+    // Check to see if biggest_unit_opt and smallest_unit_opt are both provided or as_unit_opt is provided
+    if (biggest_unit_opt.is_some() || smallest_unit_opt.is_some()) && as_unit_opt.is_some() {
+        return Err(LabeledError::new(
+            "Please provide either smallest, biggest or as unit. As unit is mutually exclusive from smallest and biggest.".to_string(),
+        ));
     }
 
-    span_vec.join(" ").trim().to_string()
+    // if there is an as_unit, use that unit as the smallest and biggest unit
+    if let Some(as_unit_string) = as_unit_opt {
+        let as_unit = get_unit_from_unit_string(as_unit_string.clone())?;
+        // Since we have jiff::Zoned datetime types, use ZonedDifference to calculate the difference
+        let span = zoned_input_datetime
+            .until(
+                ZonedDifference::new(&zoned_parameter_datetime)
+                    .smallest(as_unit)
+                    .largest(as_unit)
+                    .mode(RoundMode::HalfExpand),
+            )
+            .map_err(|err| LabeledError::new(format!("Error calculating difference: {}", err)))?;
+
+        // We only want to return the span in the unit asked for
+        let span_str = get_single_duration_unit_from_span(as_unit, span);
+        Ok(Value::string(format!("{}\n{}", span, span_str), call_span))
+    } else {
+        // otherwise, use the smallest and biggest units provided
+        let smallest_unit = if let Some(smallest_unit_string) = smallest_unit_opt {
+            get_unit_from_unit_string(smallest_unit_string.clone())?
+        } else {
+            Unit::Nanosecond
+        };
+
+        let biggest_unit = if let Some(biggest_unit_string) = biggest_unit_opt {
+            get_unit_from_unit_string(biggest_unit_string.clone())?
+        } else {
+            Unit::Year
+        };
+
+        // Since we have jiff::Zoned datetime types, use ZonedDifference to calculate the difference
+        let span = zoned_input_datetime
+            .until(
+                ZonedDifference::new(&zoned_parameter_datetime)
+                    .smallest(smallest_unit)
+                    .largest(biggest_unit)
+                    .mode(RoundMode::HalfExpand),
+            )
+            .map_err(|err| LabeledError::new(format!("Error calculating difference: {}", err)))?;
+
+        // We want to return a nushelly duration string with all units
+        let span_str = create_nushelly_duration_string(span);
+        Ok(Value::string(format!("{}\n{}", span, span_str), call_span))
+    }
 }
 
-#[test]
-fn test_examples() -> Result<(), nu_protocol::ShellError> {
+#[cfg(test)]
+mod tests {
+    use super::*;
     use nu_plugin_test_support::PluginTest;
+    use nu_protocol::{Span, Value};
 
-    // This will automatically run the examples specified in your command and compare their actual
-    // output against what was specified in the example.
-    //
-    // We recommend you add this test to any other commands you create, or remove it if the examples
-    // can't be tested this way.
+    #[test]
+    fn test_examples() -> Result<(), nu_protocol::ShellError> {
+        PluginTest::new("dt", DtPlugin.into())?.test_command_examples(&Diff)
+    }
 
-    PluginTest::new("dt", DtPlugin.into())?.test_command_examples(&Diff)
+    #[test]
+    fn test_calculate_date_diff() -> Result<(), LabeledError> {
+        let parameter_datetime_provided = Value::test_string("2024-08-20T10:24:11.693666300-05:00");
+        let piped_in_input = Value::test_string("2019-05-10T09:59:12-07:00");
+
+        let result = calculate_date_diff(
+            parameter_datetime_provided,
+            &piped_in_input,
+            None,
+            None,
+            None,
+            Span::unknown(),
+        )?;
+
+        assert_eq!(
+            result.into_string()?,
+            "P5y3m9dT22h24m59.6936663s\n5yrs 3mths 1wks 2days 22hrs 24mins 59secs 693ms 666µs 300ns"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_calculate_date_diff_with_as_unit() -> Result<(), LabeledError> {
+        let parameter_datetime_provided = Value::test_string("2024-08-20T10:24:11.693666300-05:00");
+        let piped_in_input = Value::test_string("2019-05-10T09:59:12-07:00");
+
+        let result = calculate_date_diff(
+            parameter_datetime_provided,
+            &piped_in_input,
+            None,
+            None,
+            Some("hr".to_string()),
+            Span::unknown(),
+        )?;
+
+        assert_eq!(result.into_string()?, "PT46294h\n46294hrs");
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_calculate_date_diff_with_smallest_and_biggest() -> Result<(), LabeledError> {
+        let parameter_datetime_provided = Value::test_string("2024-08-20T10:24:11.693666300-05:00");
+        let piped_in_input = Value::test_string("2019-05-10T09:59:12-07:00");
+
+        let result = calculate_date_diff(
+            parameter_datetime_provided,
+            &piped_in_input,
+            Some("year".to_string()),
+            Some("day".to_string()),
+            None,
+            Span::unknown(),
+        )?;
+
+        assert_eq!(result.into_string()?, "P5y3m10d\n5yrs 3mths 1wks 3days");
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_calculate_date_diff_with_invalid_input() {
+        let parameter_datetime_provided = Value::test_string("2024-08-20T10:24:11.693666300-05:00");
+        let piped_in_input = Value::test_string("Invalid Date");
+
+        let result = calculate_date_diff(
+            parameter_datetime_provided,
+            &piped_in_input,
+            None,
+            None,
+            None,
+            Span::unknown(),
+        );
+
+        assert!(result.is_err());
+    }
 }

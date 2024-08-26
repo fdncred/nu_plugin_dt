@@ -1,6 +1,5 @@
 use super::utils::parse_datetime_string_add_nanos_optionally;
 use crate::DtPlugin;
-use jiff::Zoned;
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
 use nu_protocol::{Category, Example, LabeledError, Signature, SyntaxShape, Value};
 
@@ -78,6 +77,9 @@ impl SimplePluginCommand for Add {
         // This is a limitation of nushell and not jiff.
         // In order to use jiff, we need to create a new duration type that can be parsed by jiff.
 
+        // From weirdan
+        // If no timezone is specified, assume local tz. Provide a way to override that. Alternatively, reject dates without a timezone.
+
         let duration: Value = call.req(0)?;
         let duration_nanos = match duration.as_duration() {
             Ok(duration) => duration,
@@ -90,8 +92,14 @@ impl SimplePluginCommand for Add {
 
         let datetime = match input {
             Value::Date { val, .. } => {
+                // dbg!(val.timezone());
+                // dbg!(val.offset());
+                // dbg!(val.fixed_offset());
+                // dbg!(val.to_rfc2822());
+                // dbg!(val.to_rfc3339());
+
                 // eprintln!("Date: {:?}", val);
-                let local_tz = Zoned::now().time_zone().clone();
+                // let local_tz = Zoned::now().time_zone().clone();
 
                 // // get chrono nanoseconds
                 // let chrono_nanos = val.timestamp_nanos_opt().ok_or_else(|| {
@@ -121,11 +129,7 @@ impl SimplePluginCommand for Add {
                 // }
 
                 // so much easier just to output chrono as rfc 3339 and let jiff parse it
-                let zoned = parse_datetime_string_add_nanos_optionally(
-                    &val.to_rfc3339(),
-                    Some(duration_nanos),
-                )?;
-                zoned.with_time_zone(local_tz)
+                parse_datetime_string_add_nanos_optionally(&val.to_rfc3339(), Some(duration_nanos))?
             }
             Value::String { val, .. } => {
                 // eprintln!("String: {:?}", val);
