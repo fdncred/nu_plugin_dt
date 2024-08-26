@@ -133,10 +133,10 @@ impl SimplePluginCommand for Diff {
         let parameter_datetime_provided: Value = call.req(0)?;
         let span = call.head;
 
-        eprintln!("    Input date: {:?}", input.clone().into_string()?);
+        eprintln!(" Input to pipeline date: {:?}", input.clone());
         eprintln!(
-            "Parameter date: {:?}",
-            parameter_datetime_provided.clone().into_string()?
+            "Parameter provided date: {:?}",
+            parameter_datetime_provided.clone()
         );
 
         if list {
