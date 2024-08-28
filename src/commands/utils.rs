@@ -52,6 +52,7 @@ pub fn convert_nanos_to_nushell_datetime_value(
 pub fn parse_datetime_string_add_nanos_optionally(
     s: &str,
     duration_nanos: Option<i64>,
+    span: NuSpan,
 ) -> Result<Zoned, LabeledError> {
     // dbg!(s);
     // let local_now = Zoned::now();
@@ -113,10 +114,10 @@ pub fn parse_datetime_string_add_nanos_optionally(
         // } else if let Ok(tz) = TimeZone::parse(s) {
         //     return Ok(Zoned::now().to_zoned(tz));
     } else {
-        eprintln!("Could not parse datetime string: {:?}", s);
-        return Err(LabeledError::new(
-            "Expected a date or datetime string".to_string(),
-        ));
+        return Err(
+            LabeledError::new("Expected a date or datetime string in utils".to_string())
+                .with_label(format!("Could not parse datetime string: {:?}", s), span),
+        );
     };
 
     eprintln!("After Parsing Zoned: {:?}\n", date_time.clone());

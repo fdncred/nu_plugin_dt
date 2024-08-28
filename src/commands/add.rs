@@ -80,6 +80,7 @@ impl SimplePluginCommand for Add {
         // From weirdan
         // If no timezone is specified, assume local tz. Provide a way to override that. Alternatively, reject dates without a timezone.
 
+        let span = input.span();
         let duration: Value = call.req(0)?;
         let duration_nanos = match duration.as_duration() {
             Ok(duration) => duration,
@@ -129,13 +130,21 @@ impl SimplePluginCommand for Add {
                 // }
 
                 // so much easier just to output chrono as rfc 3339 and let jiff parse it
-                parse_datetime_string_add_nanos_optionally(&val.to_rfc3339(), Some(duration_nanos))?
+                parse_datetime_string_add_nanos_optionally(
+                    &val.to_rfc3339(),
+                    Some(duration_nanos),
+                    span,
+                )?
             }
             Value::String { val, .. } => {
                 // eprintln!("String: {:?}", val);
-                parse_datetime_string_add_nanos_optionally(val, Some(duration_nanos))?
+                parse_datetime_string_add_nanos_optionally(val, Some(duration_nanos), span)?
             }
-            _ => return Err(LabeledError::new("Expected a date or datetime".to_string())),
+            _ => {
+                return Err(LabeledError::new(
+                    "Expected a date or datetime in add".to_string(),
+                ))
+            }
         };
         Ok(Value::string(datetime.to_string(), call.head))
     }

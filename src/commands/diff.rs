@@ -162,14 +162,16 @@ fn calculate_date_diff(
     as_unit_opt: Option<String>,
     call_span: Span,
 ) -> Result<Value, LabeledError> {
+    let param_span = parameter_datetime_provided.span();
+    let piped_span = piped_in_input.span();
     let parameter_datetime = match parameter_datetime_provided {
         Value::String { val, .. } => val,
         Value::Date { val, .. } => val.to_rfc3339(),
         _ => {
-            return Err(
-                LabeledError::new("Expected a date or datetime string".to_string())
-                    .with_label("Error", parameter_datetime_provided.span()),
-            );
+            return Err(LabeledError::new(
+                "Expected a date or datetime string in diff".to_string(),
+            )
+            .with_label("Error", parameter_datetime_provided.span()));
         }
     };
 
@@ -177,15 +179,17 @@ fn calculate_date_diff(
     let mut zoned_input_datetime = match piped_in_input {
         Value::Date { val, .. } => {
             eprintln!("Date rfc3339: {:?}", &val.to_rfc3339());
-            parse_datetime_string_add_nanos_optionally(&val.to_rfc3339(), None)?
+            parse_datetime_string_add_nanos_optionally(&val.to_rfc3339(), None, piped_span)?
         }
-        Value::String { val, .. } => parse_datetime_string_add_nanos_optionally(val, None)?,
+        Value::String { val, .. } => {
+            parse_datetime_string_add_nanos_optionally(val, None, piped_span)?
+        }
         _ => return Err(LabeledError::new("Expected a date or datetime".to_string())),
     };
 
     // convert parameter_datetime into a jiff::Zoned
     let mut zoned_parameter_datetime =
-        parse_datetime_string_add_nanos_optionally(&parameter_datetime, None)?;
+        parse_datetime_string_add_nanos_optionally(&parameter_datetime, None, param_span)?;
 
     // Check to see if biggest_unit_opt and smallest_unit_opt are both provided or as_unit_opt is provided
     if (biggest_unit_opt.is_some() || smallest_unit_opt.is_some()) && as_unit_opt.is_some() {
