@@ -2,6 +2,22 @@ use jiff::{civil, fmt::temporal::DateTimeParser, tz::TimeZone, ToSpan, Unit, Zon
 use nu_plugin::{EngineInterface, EvaluatedCall};
 use nu_protocol::{record, IntoSpanned, LabeledError, PipelineData, Span as NuSpan, Value};
 
+// Attribution: Borrowed these formats from here
+// https://github.com/BurntSushi/gitoxide/blob/25a3f1b0b07c01dd44df254f46caa6f78a4d3014/gix-date/src/time/format.rs
+
+// E.g. `2022-08-17T21:43:13+08:00`
+pub const ISO8601_STRICT: &str = "%Y-%m-%dT%H:%M:%S%:z";
+// E.g. `2022-08-17T21:43:13.123456789+08:00`
+pub const ISO8601_STRICT_WITH_FRACTIONAL: &str = "%Y-%m-%dT%H:%M:%S%.f%:z";
+// E.g. `Thu, 18 Aug 2022 12:45:06 +0800`
+pub const RFC2822: &str = "%a, %d %b %Y %H:%M:%S %z";
+// E.g. `Thu, 18 Aug 2022 12:45:06 +0800`. This is output by `git log --pretty=%aD`.
+pub const GIT_RFC2822: &str = "%a, %-d %b %Y %H:%M:%S %z";
+// E.g. `Thu Sep 04 2022 10:45:06 -0400`, like the git `DEFAULT`, but with the year and time fields swapped.
+pub const GITOXIDE: &str = "%a %b %d %Y %H:%M:%S %z";
+// E.g. `Thu Sep 4 10:45:06 2022 -0400`. This is output by `git log --pretty=%ad`.
+pub const GITLOG_DEFAULT: &str = "%a %b %-d %H:%M:%S %Y %z";
+
 // This is kind of a hack to convert jiff produced nanoseconds to Value::Date by
 // converting nanos with the 'into datetime' nushell command
 pub fn convert_nanos_to_nushell_datetime_value(
@@ -58,6 +74,24 @@ pub fn parse_datetime_string_add_nanos_optionally(
     let date_time = if let Ok(zdt) = PARSER.parse_zoned(s) {
         eprintln!("Zoned: {:?}", zdt);
         zdt
+    } else if let Ok(iso) = strptime_relaxed(ISO8601_STRICT, s) {
+        eprintln!("ISO8601: {:?}", iso);
+        iso
+    } else if let Ok(iso) = strptime_relaxed(ISO8601_STRICT_WITH_FRACTIONAL, s) {
+        eprintln!("ISO8601_FRACTIONAL: {:?}", iso);
+        iso
+    } else if let Ok(rfc) = strptime_relaxed(RFC2822, s) {
+        eprintln!("RFC2822: {:?}", rfc);
+        rfc
+    } else if let Ok(gitrfc) = strptime_relaxed(GIT_RFC2822, s) {
+        eprintln!("GIT_RFC2822: {:?}", gitrfc);
+        gitrfc
+    } else if let Ok(gitox) = strptime_relaxed(GITOXIDE, s) {
+        eprintln!("GITOXIDE: {:?}", gitox);
+        gitox
+    } else if let Ok(gitlog) = strptime_relaxed(GITLOG_DEFAULT, s) {
+        eprintln!("GITLOG_DEFAULT: {:?}", gitlog);
+        gitlog
     } else if let Ok(ts) = PARSER.parse_timestamp(s) {
         eprintln!("Timestamp: {:?}", ts);
         ts.to_zoned(TimeZone::system())
@@ -84,6 +118,8 @@ pub fn parse_datetime_string_add_nanos_optionally(
             "Expected a date or datetime string".to_string(),
         ));
     };
+
+    eprintln!("After Parsing Zoned: {:?}\n", date_time.clone());
 
     // let zdt = strtime::parse("%a, %d %b %Y %T %z", "Mon, 15 Jul 2024 16:24:59 -0400")
     //     .map_err(|err| LabeledError::new(format!("Error parsing datetime string: {err}")))?
@@ -420,4 +456,10 @@ pub fn get_single_duration_unit_from_span(as_unit: Unit, span: jiff::Span) -> St
         Unit::Microsecond => format!("{}µs", span.get_microseconds()),
         Unit::Nanosecond => format!("{}ns", span.get_nanoseconds()),
     }
+}
+
+fn strptime_relaxed(fmt: &str, input: &str) -> Result<Zoned, jiff::Error> {
+    let mut tm = jiff::fmt::strtime::parse(fmt, input)?;
+    tm.set_weekday(None);
+    tm.to_zoned()
 }

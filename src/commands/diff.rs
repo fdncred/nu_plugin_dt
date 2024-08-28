@@ -3,7 +3,7 @@ use super::utils::{
     get_unit_from_unit_string, parse_datetime_string_add_nanos_optionally,
 };
 use crate::DtPlugin;
-use jiff::{RoundMode, Unit, ZonedDifference};
+use jiff::{tz::TimeZone, RoundMode, Unit, ZonedDifference};
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
 use nu_protocol::{Category, Example, LabeledError, Signature, Span, SyntaxShape, Value};
 
@@ -133,11 +133,11 @@ impl SimplePluginCommand for Diff {
         let parameter_datetime_provided: Value = call.req(0)?;
         let span = call.head;
 
-        eprintln!(" Input to pipeline date: {:?}", input.clone());
-        eprintln!(
-            "Parameter provided date: {:?}",
-            parameter_datetime_provided.clone()
-        );
+        // eprintln!(" Input to pipeline date: {:?}", input.clone());
+        // eprintln!(
+        //     "Parameter provided date: {:?}",
+        //     parameter_datetime_provided.clone()
+        // );
 
         if list {
             Ok(Value::list(get_unit_abbreviations(), call.head))
@@ -174,7 +174,7 @@ fn calculate_date_diff(
     };
 
     // convert piped_in_input into a jiff::Zoned
-    let zoned_input_datetime = match piped_in_input {
+    let mut zoned_input_datetime = match piped_in_input {
         Value::Date { val, .. } => {
             eprintln!("Date rfc3339: {:?}", &val.to_rfc3339());
             parse_datetime_string_add_nanos_optionally(&val.to_rfc3339(), None)?
@@ -184,7 +184,7 @@ fn calculate_date_diff(
     };
 
     // convert parameter_datetime into a jiff::Zoned
-    let zoned_parameter_datetime =
+    let mut zoned_parameter_datetime =
         parse_datetime_string_add_nanos_optionally(&parameter_datetime, None)?;
 
     // Check to see if biggest_unit_opt and smallest_unit_opt are both provided or as_unit_opt is provided
@@ -192,6 +192,31 @@ fn calculate_date_diff(
         return Err(LabeledError::new(
             "Please provide either smallest, biggest or as unit. As unit is mutually exclusive from smallest and biggest.".to_string(),
         ));
+    }
+
+    if zoned_input_datetime.time_zone() == zoned_parameter_datetime.time_zone() {
+        eprintln!("Timezones are the same");
+    } else {
+        eprintln!("Timezones are different");
+        // let zdt_input_ts = zoned_input_datetime.timestamp();
+        // let zdt_parameter_ts = zoned_parameter_datetime.timestamp();
+        // eprintln!(
+        //     "Timestamp diff input - param: {}",
+        //     zdt_input_ts - zdt_parameter_ts
+        // );
+        // eprintln!(
+        //     "Timestamp diff param - input: {}",
+        //     zdt_parameter_ts - zdt_input_ts
+        // );
+        // eprintln!(
+        //     "Changed input timezone {:?} to match parameter timezone {:?}",
+        //     zoned_input_datetime.time_zone(),
+        //     zoned_parameter_datetime.time_zone(),
+        // );
+        zoned_input_datetime = zoned_input_datetime.with_time_zone(TimeZone::UTC);
+        zoned_parameter_datetime = zoned_parameter_datetime.with_time_zone(TimeZone::UTC);
+        // eprintln!("    New input datetime: {zoned_input_datetime:?}");
+        // eprintln!("New parameter datetime: {zoned_parameter_datetime:?}");
     }
 
     // if there is an as_unit, use that unit as the smallest and biggest unit
@@ -205,7 +230,7 @@ fn calculate_date_diff(
                     .largest(as_unit)
                     .mode(RoundMode::HalfExpand),
             )
-            .map_err(|err| LabeledError::new(format!("Error calculating difference: {}", err)))?;
+            .map_err(|err| LabeledError::new(format!("Error calculating difference1: {}", err)))?;
 
         // We only want to return the span in the unit asked for
         let span_str = get_single_duration_unit_from_span(as_unit, span);
@@ -232,7 +257,7 @@ fn calculate_date_diff(
                     .largest(biggest_unit)
                     .mode(RoundMode::HalfExpand),
             )
-            .map_err(|err| LabeledError::new(format!("Error calculating difference: {}", err)))?;
+            .map_err(|err| LabeledError::new(format!("Error calculating difference2: {}", err)))?;
 
         // We want to return a nushelly duration string with all units
         let span_str = create_nushelly_duration_string(span);
