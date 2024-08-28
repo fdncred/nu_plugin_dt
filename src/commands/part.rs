@@ -71,6 +71,7 @@ impl SimplePluginCommand for Part {
         call: &EvaluatedCall,
         input: &Value,
     ) -> Result<Value, LabeledError> {
+        let span = input.span();
         let list = call.has_flag("list")?;
         if list {
             Ok(Value::list(get_unit_abbreviations(), call.head))
@@ -103,11 +104,11 @@ impl SimplePluginCommand for Part {
 
                         // so much easier just to output chrono as rfc 3339 and let jiff parse it
 
-                        parse_datetime_string_add_nanos_optionally(&val.to_rfc3339(), None)?
+                        parse_datetime_string_add_nanos_optionally(&val.to_rfc3339(), None, span)?
                     }
                     Value::String { val, .. } => {
                         // eprintln!("Zoned: {:?}", zdt);
-                        parse_datetime_string_add_nanos_optionally(val, None)?
+                        parse_datetime_string_add_nanos_optionally(val, None, span)?
                     }
                     _ => return Err(LabeledError::new("Expected a date or datetime".to_string())),
                 };
