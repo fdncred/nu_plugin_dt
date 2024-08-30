@@ -161,19 +161,19 @@ dt utcnow
 
 ## RFC-9557 (extension to RFC-3339) ISO-8601
 - [x] 2022-07-08T00:14:07+08:45[+08:45]
-- [ ] 2022-07-08T00:14:07+01:00[Europe/Paris]
+- [x] 2022-07-08T00:14:07+01:00[Europe/Paris] // The offset is wrong. should be +02:00 for Europe/Paris
 - [x] 1996-12-19T16:39:57-08:00
 - [x] 1996-12-19T16:39:57-08:00[America/Los_Angeles]
-- [ ] 1976-11-18T12:34:56.987654321-02:30[America/St_Johns]
+- [x] 1976-11-18T12:34:56.987654321-02:30[America/St_Johns] // The offset is wrong. should be -03:30 for America/St_Johns
 - [x] 1976-11-18T12:34:56.987654321
 
 ## Date
 ### American
-- [ ] 07/09/24
-- [ ] 7/9/24
+- [x] 07/09/24 // month/day/year
+- [x] 7/9/24 // month/day/year
 ### ISO
 - [x] 2024-07-09
-- [ ] 2024-7-9
+- [x] 2024-7-9
 
 ## Time
 - [x] 23:59:08

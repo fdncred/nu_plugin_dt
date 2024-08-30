@@ -1,4 +1,4 @@
-use jiff::{civil, fmt::temporal::DateTimeParser, tz::TimeZone, ToSpan, Unit, Zoned};
+use jiff::{civil, fmt::temporal::DateTimeParser, tz, tz::TimeZone, ToSpan, Unit, Zoned};
 use nu_plugin::{EngineInterface, EvaluatedCall};
 use nu_protocol::{record, IntoSpanned, LabeledError, PipelineData, Span as NuSpan, Value};
 
@@ -17,6 +17,12 @@ pub const GIT_RFC2822: &str = "%a, %-d %b %Y %H:%M:%S %z";
 pub const GITOXIDE: &str = "%a %b %d %Y %H:%M:%S %z";
 // E.g. `Thu Sep 4 10:45:06 2022 -0400`. This is output by `git log --pretty=%ad`.
 pub const GITLOG_DEFAULT: &str = "%a %b %-d %H:%M:%S %Y %z";
+// E.g. `2018-7-9` or `2018-07-09`
+pub const SHORT_DATE: &str = "%Y-%m-%d";
+// E.g. `7/9/24`` or `07/09/24`
+pub const SHORT_DATE_USA_2YEAR: &str = "%m/%d/%y";
+// E.g. `7/9/2024` or `07/09/2024`
+pub const SHORT_DATE_USA_4YEAR: &str = "%m/%d/%Y";
 
 // This is kind of a hack to convert jiff produced nanoseconds to Value::Date by
 // converting nanos with the 'into datetime' nushell command
@@ -70,7 +76,16 @@ pub fn parse_datetime_string_add_nanos_optionally(
     // TimeZone
     // This is the easiest approach. And I believe it will get all cases correct. (Not 100% certain of that.)
     // But it may not necessarily be the fastest.
-    static PARSER: DateTimeParser = DateTimeParser::new();
+    static PARSER: DateTimeParser =
+        DateTimeParser::new().offset_conflict(tz::OffsetConflict::PreferOffset);
+
+    // PARSER
+    //     .parse_date(s)
+    //     .map_err(|err| LabeledError::new(err.to_string()))?;
+
+    // let z =
+    //     civil::Date::strptime(SHORT_DATE, s).map_err(|err| LabeledError::new(err.to_string()))?;
+    // dbg!(z);
 
     let date_time = if let Ok(zdt) = PARSER.parse_zoned(s) {
         eprintln!("Zoned: {:?}", zdt);
@@ -102,6 +117,18 @@ pub fn parse_datetime_string_add_nanos_optionally(
             .map_err(|err| LabeledError::new(err.to_string()))?
     } else if let Ok(date) = PARSER.parse_date(s) {
         eprintln!("Date: {:?}", date);
+        date.to_zoned(TimeZone::system())
+            .map_err(|err| LabeledError::new(err.to_string()))?
+    } else if let Ok(date) = civil::Date::strptime(SHORT_DATE, s) {
+        eprintln!("civil Date: {:?}", date);
+        date.to_zoned(TimeZone::system())
+            .map_err(|err| LabeledError::new(err.to_string()))?
+    } else if let Ok(date) = civil::Date::strptime(SHORT_DATE_USA_2YEAR, s) {
+        eprintln!("civil Date USA 2yr: {:?}", date);
+        date.to_zoned(TimeZone::system())
+            .map_err(|err| LabeledError::new(err.to_string()))?
+    } else if let Ok(date) = civil::Date::strptime(SHORT_DATE_USA_4YEAR, s) {
+        eprintln!("civil Date USA 4yr: {:?}", date);
         date.to_zoned(TimeZone::system())
             .map_err(|err| LabeledError::new(err.to_string()))?
     } else if let Ok(time) = PARSER.parse_time(s) {
