@@ -7,9 +7,9 @@ use jiff::{tz::TimeZone, RoundMode, Unit, ZonedDifference};
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
 use nu_protocol::{Category, Example, LabeledError, Signature, Span, SyntaxShape, Value};
 
-pub struct Diff;
+pub struct DtDiff;
 
-impl SimplePluginCommand for Diff {
+impl SimplePluginCommand for DtDiff {
     type Plugin = DtPlugin;
 
     fn name(&self) -> &str {
@@ -277,7 +277,7 @@ mod tests {
 
     #[test]
     fn test_examples() -> Result<(), nu_protocol::ShellError> {
-        PluginTest::new("dt", DtPlugin.into())?.test_command_examples(&Diff)
+        PluginTest::new("dt", DtPlugin.into())?.test_command_examples(&DtDiff)
     }
 
     #[test]

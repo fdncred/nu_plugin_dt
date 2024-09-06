@@ -31,10 +31,10 @@ This is not meant to be an exhaustive list of requirments but enough to get star
 - use [jiff](https://github.com/BurntSushi/jiff) crate and [docs](https://docs.rs/jiff/latest/jiff/)
 - date math
     - [x] `dt add` duration
-    - [ ] `dt sub` duration
-    - [ ] `dt sub` date
-    - [ ] `dt sub` time
-    - [ ] `dt sub` datetime
+    - [x] `dt sub` duration (covered with `dt add (-duration)`)
+    - [x] `dt sub` date (covered with `dt diff`)
+    - [x] `dt sub` time (covered with `dt add (-duration)`)
+    - [x] `dt sub` datetime (covered with `dt diff`)
     - ability to express durations in a similar way that nushell does or better. specifically better means the ability to return durations in these representations while accounting for leap year math so that any date math operation is accurate. Note: it's known that leap-seconds do not exist in jiff (yet) so it doesn't have to be that accurate but more accurate than nushell currently is without having to average days for months or years.
         - years
         - months
@@ -60,20 +60,21 @@ This is not meant to be an exhaustive list of requirments but enough to get star
 - date parsing
     - dt parse
         - separate date
-            - provide date and assume 00:00:00 time
+            - [x] provide date and assume 00:00:00 time
         - separate time
-            - provide time and assume local date
+            - [x] provide time and assume local date
 - date formatting
     - typical [strftime](https://pubs.opengroup.org/onlinepubs/009695399/functions/strftime.html) formatting
-    - nushell default
-    - dt to-rfc3339
-    - dt to-rfc9557
-    - dt to-rfc2822
-    - dt to-iso8601
+        - [ ] `dt format <strftime>`
+    - [ ] nushell default (mimic whatever nushell does with human-time)
+    - [ ] `dt to-rfc3339`
+    - [ ] `dt to-rfc9557`
+    - [ ] `dt to-rfc2822`
+    - [ ] `dt to-iso8601`
 - support round trip serialization, perhaps with serde
 - support current nushell date commands
-    - `dt now`
-    - `dt list-timezones`
+    - [x] `dt now`
+    - [ ] `dt list-timezones`
     - the others but with less priority
 - able to consume/understand nushell date/datetime literals
 - i'm not sure if it's possible to get operators to work in a plugin like `+`, and `-`

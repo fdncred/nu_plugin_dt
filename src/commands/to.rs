@@ -4,13 +4,13 @@ use jiff::Zoned;
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
 use nu_protocol::{Category, Example, LabeledError, Signature, Value};
 
-pub struct DtUtcNow;
+pub struct DtTo;
 
-impl SimplePluginCommand for DtUtcNow {
+impl SimplePluginCommand for DtTo {
     type Plugin = DtPlugin;
 
     fn name(&self) -> &str {
-        "dt utcnow"
+        "dt to"
     }
 
     fn signature(&self) -> Signature {
@@ -18,7 +18,7 @@ impl SimplePluginCommand for DtUtcNow {
     }
 
     fn description(&self) -> &str {
-        "Return the current date and time in UTC"
+        "Return the current date and time"
     }
 
     fn search_terms(&self) -> Vec<&str> {
@@ -27,7 +27,7 @@ impl SimplePluginCommand for DtUtcNow {
 
     fn examples(&self) -> Vec<Example> {
         vec![Example {
-            example: "dt utcnow",
+            example: "dt to",
             description: "Return the current date and time",
             result: None,
         }]
@@ -40,11 +40,14 @@ impl SimplePluginCommand for DtUtcNow {
         call: &EvaluatedCall,
         _input: &Value,
     ) -> Result<Value, LabeledError> {
-        let nowutc = Zoned::now()
-            .intz("UTC")
-            .map_err(|err| LabeledError::new(err.to_string()))?;
-        let nanos = nowutc.timestamp().as_nanosecond();
-        convert_nanos_to_nushell_datetime_value(nanos, engine, call.head, true)
+        // Boilerplate code
+        // [ ] dt to-rfc3339
+        // [ ] dt to-rfc9557
+        // [ ] dt to-rfc2822
+        // [ ] dt to-iso8601
+
+        let nanos = Zoned::now().timestamp().as_nanosecond();
+        convert_nanos_to_nushell_datetime_value(nanos, engine, call.head, false)
     }
 }
 
@@ -58,5 +61,5 @@ fn test_examples() -> Result<(), nu_protocol::ShellError> {
     // We recommend you add this test to any other commands you create, or remove it if the examples
     // can't be tested this way.
 
-    PluginTest::new("dt", DtPlugin.into())?.test_command_examples(&DtUtcNow)
+    PluginTest::new("dt", DtPlugin.into())?.test_command_examples(&DtTo)
 }

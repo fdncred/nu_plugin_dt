@@ -4,9 +4,9 @@ use jiff::Zoned;
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
 use nu_protocol::{Category, Example, LabeledError, Signature, Value};
 
-pub struct Now;
+pub struct DtNow;
 
-impl SimplePluginCommand for Now {
+impl SimplePluginCommand for DtNow {
     type Plugin = DtPlugin;
 
     fn name(&self) -> &str {
@@ -55,5 +55,5 @@ fn test_examples() -> Result<(), nu_protocol::ShellError> {
     // We recommend you add this test to any other commands you create, or remove it if the examples
     // can't be tested this way.
 
-    PluginTest::new("dt", DtPlugin.into())?.test_command_examples(&Now)
+    PluginTest::new("dt", DtPlugin.into())?.test_command_examples(&DtNow)
 }
