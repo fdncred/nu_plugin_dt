@@ -5,9 +5,9 @@ use crate::DtPlugin;
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
 use nu_protocol::{Category, Example, LabeledError, Signature, SyntaxShape, Value};
 
-pub struct Part;
+pub struct DtPart;
 
-impl SimplePluginCommand for Part {
+impl SimplePluginCommand for DtPart {
     type Plugin = DtPlugin;
 
     fn name(&self) -> &str {
@@ -131,5 +131,5 @@ fn test_examples() -> Result<(), nu_protocol::ShellError> {
     // We recommend you add this test to any other commands you create, or remove it if the examples
     // can't be tested this way.
 
-    PluginTest::new("dt", DtPlugin.into())?.test_command_examples(&Part)
+    PluginTest::new("dt", DtPlugin.into())?.test_command_examples(&DtPart)
 }
