@@ -65,12 +65,13 @@ This is not meant to be an exhaustive list of requirments but enough to get star
             - [x] provide time and assume local date
 - date formatting
     - typical [strftime](https://pubs.opengroup.org/onlinepubs/009695399/functions/strftime.html) formatting
-        - [ ] `dt format <strftime>`
+        - [x] `dt format <strftime>`
+        - [ ] `dt format --list` to list the strftime and strptime formats
     - [ ] nushell default (mimic whatever nushell does with human-time)
-    - [ ] `dt to-rfc3339`
-    - [ ] `dt to-rfc9557`
-    - [ ] `dt to-rfc2822`
-    - [ ] `dt to-iso8601`
+    - [x] `dt to-rfc3339`
+    - [x] `dt to-rfc9557`
+    - [x] `dt to-rfc2822`
+    - [x] `dt to-iso8601`
 - support round trip serialization, perhaps with serde
 - support current nushell date commands
     - [x] `dt now`
