@@ -23,5 +23,5 @@ nu-path = "0.98.0"
 jiff = { version = "0.1.8", features = ["logging", "serde"] }
 
 [dev-dependencies]
-# nu-plugin-test-support = { version = "0.95.0" }
-nu-plugin-test-support = { path = "../nushell/crates/nu-plugin-test-support", version = "0.97.2" }
+nu-plugin-test-support = { version = "0.98.0" }
+# nu-plugin-test-support = { path = "../nushell/crates/nu-plugin-test-support", version = "0.97.2" }
