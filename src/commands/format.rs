@@ -1,9 +1,6 @@
 use super::utils::parse_datetime_string_add_nanos_optionally;
 use crate::DtPlugin;
-use jiff::{
-    fmt::{rfc2822, strtime},
-    Zoned,
-};
+use jiff::{fmt::rfc2822, Zoned};
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
 use nu_protocol::{
     record, Category, Example, LabeledError, Signature, Span as NuSpan, SyntaxShape, Value,
@@ -88,17 +85,20 @@ impl SimplePluginCommand for DtFormat {
             }
         };
 
-        eprintln!("Datetime: {:?}", datetime);
+        let formatted_dt = if format_string == "%+" {
+            datetime.strftime("%FT%T%:z").to_string() // RFC 3339
+        } else if format_string == "%c" {
+            rfc2822::to_string(&datetime).unwrap_or_default()
+        } else {
+            datetime.strftime(&format_string).to_string()
+        };
 
-        // let formatted_dt = datetime.strftime(&format_string).to_string();
-
-        let formatted_dt = strtime::format(format_string.clone(), &datetime).map_err(|err| {
-            LabeledError::new(format!("Error formatting datetime: {:?}", err)).with_label(
-                format!("Error with format string: {}", format_string.clone()),
-                span,
-            )
-        })?;
-        eprintln!("Formatted: {:?}", formatted_dt);
+        // let formatted_dt = strtime::format(format_string.clone(), &datetime).map_err(|err| {
+        //     LabeledError::new(format!("Error formatting datetime: {:?}", err)).with_label(
+        //         format!("Error with format string: {}", format_string.clone()),
+        //         span,
+        //     )
+        // })?;
         Ok(Value::string(formatted_dt, span))
     }
 }
@@ -390,7 +390,7 @@ pub(crate) fn generate_strftime_list(head: NuSpan, show_parse_only_formats: bool
                     "Specification" => Value::string(s.spec, head),
                     "Example" => {
                         if s.spec == "%+" {
-                            Value::string(now.timestamp().to_string(), head)
+                            Value::string(now.strftime("%FT%T%:z").to_string(), head)
                         } else if s.spec == "%c" {
                             let rfc2822 = rfc2822::to_string(&now).unwrap_or_default();
                             Value::string(rfc2822, head)
