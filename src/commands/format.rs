@@ -1,7 +1,10 @@
 use super::utils::parse_datetime_string_add_nanos_optionally;
 use crate::DtPlugin;
+use jiff::{fmt::strtime, Zoned};
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
-use nu_protocol::{Category, Example, LabeledError, Signature, SyntaxShape, Value};
+use nu_protocol::{
+    record, Category, Example, LabeledError, Signature, Span as NuSpan, SyntaxShape, Value,
+};
 
 pub struct DtFormat;
 
@@ -14,10 +17,15 @@ impl SimplePluginCommand for DtFormat {
 
     fn signature(&self) -> Signature {
         Signature::build(self.name())
-            .required(
+            .optional(
                 "format",
                 SyntaxShape::String,
                 "Format string to use to format the date/datetime",
+            )
+            .switch(
+                "list",
+                "List of Display Formats supported by Jiff",
+                Some('l'),
             )
             .category(Category::Date)
     }
@@ -46,6 +54,11 @@ impl SimplePluginCommand for DtFormat {
         input: &Value,
     ) -> Result<Value, LabeledError> {
         let span = input.span();
+        let list = call.has_flag("list")?;
+        if list {
+            return Ok(generate_strftime_list(span, false));
+        }
+
         let format_param: Option<String> = call.req(0)?;
         let format_string = match format_param {
             Some(format) => format,
@@ -72,7 +85,17 @@ impl SimplePluginCommand for DtFormat {
             }
         };
 
-        let formatted_dt = datetime.strftime(&format_string).to_string();
+        eprintln!("Datetime: {:?}", datetime);
+
+        // let formatted_dt = datetime.strftime(&format_string).to_string();
+
+        let formatted_dt = strtime::format(format_string.clone(), &datetime).map_err(|err| {
+            LabeledError::new(format!("Error formatting datetime: {:?}", err)).with_label(
+                format!("Error with format string: {}", format_string.clone()),
+                span,
+            )
+        })?;
+        eprintln!("Formatted: {:?}", formatted_dt);
         Ok(Value::string(formatted_dt, span))
     }
 }
@@ -116,3 +139,272 @@ fn test_examples() -> Result<(), nu_protocol::ShellError> {
 // │ 21 │ %z         │ +0530                    │ A time zone offset in the format [+-]HHMM[SS].                     │
 // │ 22 │ %:z        │ +05:30                   │ A time zone offset in the format [+-]HH:MM[:SS].                   │
 // ╰─#──┴─Specifier──┴─────────Example──────────┴────────────────────────────Description─────────────────────────────╯
+
+/// Generates a table containing available datetime format specifiers
+///
+/// # Arguments
+/// * `head` - use the call's head
+/// * `show_parse_only_formats` - whether parse-only format specifiers (that can't be outputted) should be shown. Should only be used for `into datetime`, not `format date`
+pub(crate) fn generate_strftime_list(head: NuSpan, show_parse_only_formats: bool) -> Value {
+    // let now = Local::now();
+    let now = Zoned::now();
+
+    struct FormatSpecification<'a> {
+        spec: &'a str,
+        description: &'a str,
+    }
+
+    let specifications = [
+        FormatSpecification {
+            spec: "%%",
+            description: "A literal %.",
+        },
+        FormatSpecification {
+            spec: "%A",
+            description: "The full and abbreviated weekday, respectively.",
+        },
+        FormatSpecification {
+            spec: "%a",
+            description: "The full and abbreviated weekday, respectively.",
+        },
+        FormatSpecification {
+            spec: "%B",
+            description: "The full and abbreviated month name, respectively.",
+        },
+        FormatSpecification {
+            spec: "%b",
+            description: "The full and abbreviated month name, respectively.",
+        },
+        FormatSpecification {
+            spec: "%h",
+            description: "The full and abbreviated month name, respectively.",
+        },
+        FormatSpecification {
+            spec: "%D",
+            description: "Equivalent to %m/%d/%y.",
+        },
+        FormatSpecification {
+            spec: "%d",
+            description: "Day number (01--31), zero-padded to 2 digits.",
+        },
+        FormatSpecification {
+            spec: "%e",
+            description: "The day of the month. %d is zero-padded, %e is space padded.",
+        },
+        FormatSpecification {
+            spec: "%F",
+            description: "Equivalent to %Y-%m-%d.",
+        },
+        FormatSpecification {
+            spec: "%f",
+            description: "Fractional seconds, up to nanosecond precision.",
+        },
+        FormatSpecification {
+            spec: "%.f",
+            description: "Optional fractional seconds, with dot, up to nanosecond precision..",
+        },
+        FormatSpecification {
+            spec: "%.3f",
+            description: "Similar to .%f but left-aligned but fixed to a length of 3.",
+        },
+        FormatSpecification {
+            spec: "%.6f",
+            description: "Similar to .%f but left-aligned but fixed to a length of 6.",
+        },
+        FormatSpecification {
+            spec: "%.9f",
+            description: "Similar to .%f but left-aligned but fixed to a length of 9.",
+        },
+        FormatSpecification {
+            spec: "%3f",
+            description: "Similar to %.3f but without the leading dot.",
+        },
+        FormatSpecification {
+            spec: "%6f",
+            description: "Similar to %.6f but without the leading dot.",
+        },
+        FormatSpecification {
+            spec: "%9f",
+            description: "Similar to %.9f but without the leading dot.",
+        },
+        FormatSpecification {
+            spec: "%H",
+            description: "The hour in a 24 hour clock. Zero padded.",
+        },
+        FormatSpecification {
+            spec: "%I",
+            description: "The hour in a 12 hour clock. Zero padded.",
+        },
+        FormatSpecification {
+            spec: "%M",
+            description: "The minute. Zero padded.",
+        },
+        FormatSpecification {
+            spec: "%m",
+            description: "The month. Zero padded.",
+        },
+        FormatSpecification {
+            spec: "%P",
+            description: "Whether the time is in the AM or PM, lowercase. (am/pm)",
+        },
+        FormatSpecification {
+            spec: "%p",
+            description: "Whether the time is in the AM or PM, lowercase. (AM/PM)",
+        },
+        FormatSpecification {
+            spec: "%S",
+            description: "The second. Zero padded.",
+        },
+        FormatSpecification {
+            spec: "%T",
+            description: "Equivalent to %H:%M:%S.",
+        },
+        FormatSpecification {
+            spec: "%V",
+            description: "An IANA time zone identifier, or %z if one doesn't exist.",
+        },
+        FormatSpecification {
+            spec: "%:V",
+            description: "An IANA time zone identifier, or %:z if one doesn't exist.",
+        },
+        FormatSpecification {
+            spec: "%Y",
+            description: "A full year, including century. Zero padded to 4 digits.",
+        },
+        FormatSpecification {
+            spec: "%y",
+            description: "A two-digit year. Represents only 1969-2068. Zero padded.",
+        },
+        FormatSpecification {
+            spec: "%Z",
+            description: "A time zone abbreviation. Supported when formatting only.",
+        },
+        FormatSpecification {
+            spec: "%z",
+            description: "A time zone offset in the format [+-]HHMM[SS].",
+        },
+        FormatSpecification {
+            spec: "%:z",
+            description: "A time zone offset in the format [+-]HH:MM[:SS].",
+        },
+        // FormatSpecification {
+        //     spec: "%C",
+        //     description: "The proleptic Gregorian year divided by 100, zero-padded to 2 digits.",
+        // },
+        // FormatSpecification {
+        //     spec: "%w",
+        //     description: "Sunday = 0, Monday = 1, ..., Saturday = 6.",
+        // },
+        // FormatSpecification {
+        //     spec: "%u",
+        //     description: "Monday = 1, Tuesday = 2, ..., Sunday = 7. (ISO 8601)",
+        // },
+        // FormatSpecification {
+        //     spec: "%U",
+        //     description: "Week number starting with Sunday (00--53), zero-padded to 2 digits.",
+        // },
+        // FormatSpecification {
+        //     spec: "%W",
+        //     description:
+        //         "Same as %U, but week 1 starts with the first Monday in that year instead.",
+        // },
+        // FormatSpecification {
+        //     spec: "%G",
+        //     description: "Same as %Y but uses the year number in ISO 8601 week date.",
+        // },
+        // FormatSpecification {
+        //     spec: "%g",
+        //     description: "Same as %y but uses the year number in ISO 8601 week date.",
+        // },
+        // FormatSpecification {
+        //     spec: "%j",
+        //     description: "Day of the year (001--366), zero-padded to 3 digits.",
+        // },
+        // FormatSpecification {
+        //     spec: "%x",
+        //     description: "Locale's date representation (e.g., 12/31/99).",
+        // },
+        // FormatSpecification {
+        //     spec: "%v",
+        //     description: "Day-month-year format. Same as %e-%b-%Y.",
+        // },
+        // FormatSpecification {
+        //     spec: "%k",
+        //     description: "Same as %H but space-padded. Same as %_H.",
+        // },
+        // FormatSpecification {
+        //     spec: "%l",
+        //     description: "Same as %I but space-padded. Same as %_I.",
+        // },
+        // FormatSpecification {
+        //     spec: "%R",
+        //     description: "Hour-minute format. Same as %H:%M.",
+        // },
+        // FormatSpecification {
+        //     spec: "%X",
+        //     description: "Locale's time representation (e.g., 23:13:48).",
+        // },
+        // FormatSpecification {
+        //     spec: "%r",
+        //     description: "Hour-minute-second format in 12-hour clocks. Same as %I:%M:%S %p.",
+        // },
+        // FormatSpecification {
+        //     spec: "%c",
+        //     description: "Locale's date and time (e.g., Thu Mar 3 23:05:25 2005).",
+        // },
+        // FormatSpecification {
+        //     spec: "%+",
+        //     description: "ISO 8601 / RFC 3339 date & time format.",
+        // },
+        // FormatSpecification {
+        //     spec: "%s",
+        //     description: "UNIX timestamp, the number of seconds since 1970-01-01",
+        // },
+        // FormatSpecification {
+        //     spec: "%t",
+        //     description: "Literal tab (\\t).",
+        // },
+        // FormatSpecification {
+        //     spec: "%n",
+        //     description: "Literal newline (\\n).",
+        // },
+    ];
+
+    let mut records = specifications
+        .iter()
+        .map(|s| {
+            Value::record(
+                record! {
+                    "Specification" => Value::string(s.spec, head),
+                    "Example" => Value::string(now.strftime(s.spec).to_string(), head),
+                    "Description" => Value::string(s.description, head),
+                },
+                head,
+            )
+        })
+        .collect::<Vec<Value>>();
+
+    if show_parse_only_formats {
+        // now.format("%#z") will panic since it is parse-only
+        // so here we emulate how it will look:
+        let example = now
+            .strftime("%:z") // e.g. +09:30
+            .to_string()
+            .get(0..3) // +09:30 -> +09
+            .unwrap_or("")
+            .to_string();
+
+        let description = "Parsing only: Same as %z but allows minutes to be missing or present.";
+
+        records.push(Value::record(
+            record! {
+                "Specification" => Value::string("%#z", head),
+                "Example" => Value::string(example, head),
+                "Description" => Value::string(description, head),
+            },
+            head,
+        ));
+    }
+
+    Value::list(records, head)
+}
