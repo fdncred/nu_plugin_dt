@@ -1,6 +1,10 @@
-use jiff::{civil, fmt::temporal::DateTimeParser, tz, tz::TimeZone, ToSpan, Unit, Zoned};
+use jiff::{
+    civil, fmt::temporal::DateTimeParser, tz, tz::TimeZone, Span as JiffSpan, ToSpan, Unit, Zoned,
+};
 use nu_plugin::{EngineInterface, EvaluatedCall};
-use nu_protocol::{record, IntoSpanned, LabeledError, PipelineData, Span as NuSpan, Value};
+use nu_protocol::{
+    record, IntoSpanned, LabeledError, PipelineData, Span as NuSpan, Spanned, Value,
+};
 
 // Attribution: Borrowed these formats from here
 // https://github.com/BurntSushi/gitoxide/blob/25a3f1b0b07c01dd44df254f46caa6f78a4d3014/gix-date/src/time/format.rs
@@ -59,6 +63,7 @@ pub fn parse_datetime_string_add_nanos_optionally(
     s: &str,
     duration_nanos: Option<i64>,
     span: NuSpan,
+    jiff_span: Option<JiffSpan>,
 ) -> Result<Zoned, LabeledError> {
     // dbg!(s);
     // let local_now = Zoned::now();
@@ -87,52 +92,82 @@ pub fn parse_datetime_string_add_nanos_optionally(
     //     civil::Date::strptime(SHORT_DATE, s).map_err(|err| LabeledError::new(err.to_string()))?;
     // dbg!(z);
 
-    let date_time = if let Ok(zdt) = PARSER.parse_zoned(s) {
-        eprintln!("Zoned: {:?}", zdt);
-        zdt
-    } else if let Ok(iso) = strptime_relaxed(ISO8601_STRICT, s) {
-        eprintln!("ISO8601: {:?}", iso);
-        iso
-    } else if let Ok(iso) = strptime_relaxed(ISO8601_STRICT_WITH_FRACTIONAL, s) {
-        eprintln!("ISO8601_FRACTIONAL: {:?}", iso);
-        iso
-    } else if let Ok(rfc) = strptime_relaxed(RFC2822, s) {
-        eprintln!("RFC2822: {:?}", rfc);
-        rfc
-    } else if let Ok(gitrfc) = strptime_relaxed(GIT_RFC2822, s) {
-        eprintln!("GIT_RFC2822: {:?}", gitrfc);
-        gitrfc
-    } else if let Ok(gitox) = strptime_relaxed(GITOXIDE, s) {
-        eprintln!("GITOXIDE: {:?}", gitox);
-        gitox
-    } else if let Ok(gitlog) = strptime_relaxed(GITLOG_DEFAULT, s) {
-        eprintln!("GITLOG_DEFAULT: {:?}", gitlog);
-        gitlog
-    } else if let Ok(ts) = PARSER.parse_timestamp(s) {
-        eprintln!("Timestamp: {:?}", ts);
-        ts.to_zoned(TimeZone::system())
-    } else if let Ok(dt) = PARSER.parse_datetime(s) {
-        eprint!("Datetime: {:?}", dt);
-        dt.to_zoned(TimeZone::system())
-            .map_err(|err| LabeledError::new(err.to_string()))?
-    } else if let Ok(date) = PARSER.parse_date(s) {
-        eprintln!("Date: {:?}", date);
-        date.to_zoned(TimeZone::system())
-            .map_err(|err| LabeledError::new(err.to_string()))?
-    } else if let Ok(date) = civil::Date::strptime(SHORT_DATE, s) {
-        eprintln!("civil Date: {:?}", date);
+    let see_debug_values = false;
+
+    let date_time = if let Ok(date) = civil::Date::strptime(SHORT_DATE, s) {
+        if see_debug_values {
+            eprintln!("civil Date (SHORT_DATE): {:?}", date);
+        }
         date.to_zoned(TimeZone::system())
             .map_err(|err| LabeledError::new(err.to_string()))?
     } else if let Ok(date) = civil::Date::strptime(SHORT_DATE_USA_2YEAR, s) {
-        eprintln!("civil Date USA 2yr: {:?}", date);
+        if see_debug_values {
+            eprintln!("civil Date USA 2yr (SHORT_DATE_USA_2YEAR): {:?}", date);
+        }
         date.to_zoned(TimeZone::system())
             .map_err(|err| LabeledError::new(err.to_string()))?
     } else if let Ok(date) = civil::Date::strptime(SHORT_DATE_USA_4YEAR, s) {
-        eprintln!("civil Date USA 4yr: {:?}", date);
+        if see_debug_values {
+            eprintln!("civil Date USA 4yr (SHORT_DATE_USA_4YEAR): {:?}", date);
+        }
+        date.to_zoned(TimeZone::system())
+            .map_err(|err| LabeledError::new(err.to_string()))?
+    } else if let Ok(zdt) = PARSER.parse_zoned(s) {
+        if see_debug_values {
+            eprintln!("Zoned: {:?}", zdt);
+        }
+        zdt
+    } else if let Ok(iso) = strptime_relaxed(ISO8601_STRICT, s) {
+        if see_debug_values {
+            eprintln!("ISO8601_STRICT: {:?}", iso);
+        }
+        iso
+    } else if let Ok(iso) = strptime_relaxed(ISO8601_STRICT_WITH_FRACTIONAL, s) {
+        if see_debug_values {
+            eprintln!("ISO8601_STRICT_WITH_FRACTIONAL: {:?}", iso);
+        }
+        iso
+    } else if let Ok(rfc) = strptime_relaxed(RFC2822, s) {
+        if see_debug_values {
+            eprintln!("RFC2822: {:?}", rfc);
+        }
+        rfc
+    } else if let Ok(gitrfc) = strptime_relaxed(GIT_RFC2822, s) {
+        if see_debug_values {
+            eprintln!("GIT_RFC2822: {:?}", gitrfc);
+        }
+        gitrfc
+    } else if let Ok(gitox) = strptime_relaxed(GITOXIDE, s) {
+        if see_debug_values {
+            eprintln!("GITOXIDE: {:?}", gitox);
+        }
+        gitox
+    } else if let Ok(gitlog) = strptime_relaxed(GITLOG_DEFAULT, s) {
+        if see_debug_values {
+            eprintln!("GITLOG_DEFAULT: {:?}", gitlog);
+        }
+        gitlog
+    } else if let Ok(ts) = PARSER.parse_timestamp(s) {
+        if see_debug_values {
+            eprintln!("Timestamp: {:?}", ts);
+        }
+        ts.to_zoned(TimeZone::system())
+    } else if let Ok(dt) = PARSER.parse_datetime(s) {
+        if see_debug_values {
+            eprintln!("Datetime: {:?}", dt);
+        }
+        dt.to_zoned(TimeZone::system())
+            .map_err(|err| LabeledError::new(err.to_string()))?
+    } else if let Ok(date) = PARSER.parse_date(s) {
+        if see_debug_values {
+            eprintln!("Date: {:?}", date);
+        }
         date.to_zoned(TimeZone::system())
             .map_err(|err| LabeledError::new(err.to_string()))?
     } else if let Ok(time) = PARSER.parse_time(s) {
-        eprintln!("Time: {:?}", time);
+        if see_debug_values {
+            eprintln!("Time: {:?}", time);
+        }
         time.to_datetime(Zoned::now().datetime().date())
             .to_zoned(TimeZone::system())
             .map_err(|err| LabeledError::new(err.to_string()))?
@@ -147,7 +182,9 @@ pub fn parse_datetime_string_add_nanos_optionally(
         );
     };
 
-    eprintln!("After Parsing Zoned: {:?}\n", date_time.clone());
+    if see_debug_values {
+        eprintln!("After Parsing Zoned: {:?}\n", date_time.clone());
+    }
 
     // let zdt = strtime::parse("%a, %d %b %Y %T %z", "Mon, 15 Jul 2024 16:24:59 -0400")
     //     .map_err(|err| LabeledError::new(format!("Error parsing datetime string: {err}")))?
@@ -237,6 +274,11 @@ pub fn parse_datetime_string_add_nanos_optionally(
         // Ok(zdt)
         Ok(date_plus_duration)
         // Ok(date_plus_duration.to_zoned(tz))
+    } else if let Some(jiff_span) = jiff_span {
+        let zdt = date_time
+            .checked_add(jiff_span)
+            .map_err(|err| LabeledError::new(err.to_string()))?;
+        Ok(zdt)
     } else {
         // This is converting all dates to the current timezone, which is wrong
         // let zdt = date_time
@@ -313,6 +355,32 @@ pub fn get_unit_from_unit_string(unit_name: String) -> Result<Unit, LabeledError
     };
 
     unit
+}
+
+#[allow(dead_code)]
+pub fn parse_number_and_unit_string(
+    input_value: Spanned<String>,
+) -> Result<(i64, String), LabeledError> {
+    let mut number_part = String::new();
+    let mut string_part = String::new();
+
+    let input_str = input_value.item;
+
+    for (i, c) in input_str.char_indices() {
+        if c.is_ascii_digit() {
+            number_part.push(c);
+        } else {
+            string_part = input_str[i..].to_string();
+            break;
+        }
+    }
+
+    let number = number_part.parse::<i64>().map_err(|err| {
+        LabeledError::new(format!("Could not parse number from string: {err}",))
+            .with_label(format!("string input was {input_str}"), input_value.span)
+    })?;
+
+    Ok((number, string_part))
 }
 
 pub fn get_unit_abbreviations() -> Vec<Value> {
@@ -490,4 +558,223 @@ fn strptime_relaxed(fmt: &str, input: &str) -> Result<Zoned, jiff::Error> {
     let mut tm = jiff::fmt::strtime::parse(fmt, input)?;
     tm.set_weekday(None);
     tm.to_zoned()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nu_protocol::Span as NuSpan;
+
+    #[test]
+    fn test_get_part_from_zoned_as_i16() {
+        let datetime = Zoned::now();
+        let part_string = "year".to_string();
+
+        let result = get_part_from_zoned_as_i16(part_string, datetime.clone());
+        assert!(result.is_ok());
+        let year = result.unwrap();
+        assert_eq!(year, datetime.year() as i16);
+    }
+
+    #[test]
+    fn test_get_unit_from_unit_string() {
+        let unit_name = "year".to_string();
+
+        let result = get_unit_from_unit_string(unit_name);
+        assert!(result.is_ok());
+        let unit = result.unwrap();
+        assert_eq!(unit, Unit::Year);
+    }
+
+    #[test]
+    fn test_parse_number_and_unit_string() {
+        let input_value = Spanned {
+            item: "10days".to_string(),
+            span: NuSpan::unknown(),
+        };
+
+        let result = parse_number_and_unit_string(input_value);
+        assert!(result.is_ok());
+        let (number, unit) = result.unwrap();
+        assert_eq!(number, 10);
+        assert_eq!(unit, "days");
+    }
+
+    #[test]
+    fn test_get_unit_abbreviations() {
+        let abbreviations = get_unit_abbreviations();
+        assert_eq!(abbreviations.len(), 13);
+    }
+
+    #[test]
+    fn test_create_nushelly_duration_string() {
+        let span = jiff::Span::new()
+            .years(1)
+            .months(2)
+            .days(3)
+            .hours(4)
+            .minutes(5)
+            .seconds(6);
+        let result = create_nushelly_duration_string(span);
+        assert_eq!(result, "1yrs 2mths 3days 4hrs 5mins 6secs");
+    }
+
+    #[test]
+    fn test_get_single_duration_unit_from_span() {
+        let span = jiff::Span::new().years(1);
+        let result = get_single_duration_unit_from_span(Unit::Year, span);
+        assert_eq!(result, "1yrs");
+    }
+
+    #[test]
+    fn test_strptime_relaxed() {
+        let fmt = "%Y-%m-%dT%H:%M:%S%:z";
+        let input = "2022-01-01T00:00:00+00:00";
+
+        let result = strptime_relaxed(fmt, input);
+        assert!(result.is_ok());
+        let datetime = result.unwrap();
+        assert_eq!(datetime.year(), 2022);
+        assert_eq!(datetime.month(), 1);
+        assert_eq!(datetime.day(), 1);
+    }
+
+    #[test]
+    fn test_parse_datetime_string_add_nanos_optionally_case1() {
+        let s = "2022-01-01T00:00:00+00:00";
+        let duration_nanos = Some(1_000_000_000); // 1 second
+        let span = NuSpan::unknown();
+
+        let result = parse_datetime_string_add_nanos_optionally(s, duration_nanos, span, None);
+        assert!(result.is_ok());
+        let datetime = result.unwrap();
+        assert_eq!(datetime.second(), 1);
+    }
+
+    #[test]
+    fn test_parse_datetime_string_add_nanos_optionally_case2() {
+        let s = "2022-01-01T00:00:00+00:00";
+        let duration_nanos = Some(60_000_000_000); // 1 minute
+        let span = NuSpan::unknown();
+
+        let result = parse_datetime_string_add_nanos_optionally(s, duration_nanos, span, None);
+        assert!(result.is_ok());
+        let datetime = result.unwrap();
+        assert_eq!(datetime.minute(), 1);
+    }
+
+    #[test]
+    fn test_parse_datetime_string_add_nanos_optionally_case3() {
+        let s = "2022-01-01T00:00:00+00:00";
+        let duration_nanos = Some(3_600_000_000_000); // 1 hour
+        let span = NuSpan::unknown();
+
+        let result = parse_datetime_string_add_nanos_optionally(s, duration_nanos, span, None);
+        assert!(result.is_ok());
+        let datetime = result.unwrap();
+        assert_eq!(datetime.hour(), 1);
+    }
+
+    #[test]
+    fn test_parse_datetime_string_add_nanos_optionally_case4() {
+        let s = "2022-01-01T00:00:00+00:00";
+        let duration_nanos = Some(86_400_000_000_000); // 1 day
+        let span = NuSpan::unknown();
+
+        let result = parse_datetime_string_add_nanos_optionally(s, duration_nanos, span, None);
+        assert!(result.is_ok());
+        let datetime = result.unwrap();
+        assert_eq!(datetime.day(), 2);
+    }
+
+    #[test]
+    fn test_parse_datetime_string_add_nanos_optionally_case5() {
+        let s = "2022-01-01T00:00:00+00:00";
+        let duration_nanos = None;
+        let span = NuSpan::unknown();
+
+        let result = parse_datetime_string_add_nanos_optionally(s, duration_nanos, span, None);
+        assert!(result.is_ok());
+        let datetime = result.unwrap();
+        assert_eq!(datetime.second(), 0);
+    }
+
+    #[test]
+    fn test_parse_datetime_string_add_nanos_optionally_case6() {
+        let s = "2022-01-01";
+        let duration_nanos = None;
+        let span = NuSpan::unknown();
+
+        let result = parse_datetime_string_add_nanos_optionally(s, duration_nanos, span, None);
+        assert!(result.is_ok());
+        let datetime = result.unwrap();
+        assert_eq!(datetime.second(), 0);
+    }
+
+    #[test]
+    fn test_parse_datetime_string_add_nanos_optionally_case7() {
+        let s = "2022-01-01";
+        let duration_nanos = Some(86_400_000_000_000); // 1 day
+        let span = NuSpan::unknown();
+
+        let result = parse_datetime_string_add_nanos_optionally(s, duration_nanos, span, None);
+        assert!(result.is_ok());
+        let datetime = result.unwrap();
+        assert_eq!(datetime.day(), 2);
+    }
+
+    #[test]
+    fn test_parse_datetime_string_add_nanos_optionally_case8() {
+        let s = "2022-01-01T00:00:00.123456789+00:00";
+        let duration_nanos = None;
+        let span = NuSpan::unknown();
+
+        let result = parse_datetime_string_add_nanos_optionally(s, duration_nanos, span, None);
+        assert!(result.is_ok());
+        let datetime = result.unwrap();
+        assert_eq!(datetime.hour(), 0);
+        assert_eq!(datetime.minute(), 0);
+        assert_eq!(datetime.second(), 0);
+        assert_eq!(datetime.millisecond(), 123);
+        assert_eq!(datetime.microsecond(), 456);
+        assert_eq!(datetime.nanosecond(), 789);
+    }
+
+    #[test]
+    fn test_parse_datetime_string_add_nanos_optionally_case9() {
+        let s = "2022-01-01T00:00:00.123456789+00:00";
+        let duration_nanos = Some(1_000_000_000); // 1 second
+        let span = NuSpan::unknown();
+
+        let result = parse_datetime_string_add_nanos_optionally(s, duration_nanos, span, None);
+        assert!(result.is_ok());
+        let datetime = result.unwrap();
+
+        assert_eq!(datetime.second(), 1);
+        assert_eq!(datetime.nanosecond(), 789);
+    }
+
+    #[test]
+    fn test_parse_datetime_string_add_nanos_optionally_case10() {
+        let s = "Thu, 18 Aug 2022 12:45:06 +0800";
+        let duration_nanos = None;
+        let span = NuSpan::unknown();
+
+        let result = parse_datetime_string_add_nanos_optionally(s, duration_nanos, span, None);
+        assert!(result.is_ok());
+        let datetime = result.unwrap();
+        assert_eq!(datetime.second(), 6);
+    }
+
+    #[test]
+    fn test_parse_datetime_string_add_nanos_optionally_case11() {
+        let s = "Thu, 18 Aug 2022 12:45:06 +0800";
+        let duration_nanos = Some(1_000_000_000); // 1 second
+        let span = NuSpan::unknown();
+
+        let result = parse_datetime_string_add_nanos_optionally(s, duration_nanos, span, None);
+        assert!(result.is_ok());
+        let datetime = result.unwrap();
+        assert_eq!(datetime.second(), 7);
+    }
 }

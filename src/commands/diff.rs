@@ -178,18 +178,18 @@ fn calculate_date_diff(
     // convert piped_in_input into a jiff::Zoned
     let mut zoned_input_datetime = match piped_in_input {
         Value::Date { val, .. } => {
-            eprintln!("Date rfc3339: {:?}", &val.to_rfc3339());
-            parse_datetime_string_add_nanos_optionally(&val.to_rfc3339(), None, piped_span)?
+            // eprintln!("Date rfc3339: {:?}", &val.to_rfc3339());
+            parse_datetime_string_add_nanos_optionally(&val.to_rfc3339(), None, piped_span, None)?
         }
         Value::String { val, .. } => {
-            parse_datetime_string_add_nanos_optionally(val, None, piped_span)?
+            parse_datetime_string_add_nanos_optionally(val, None, piped_span, None)?
         }
         _ => return Err(LabeledError::new("Expected a date or datetime".to_string())),
     };
 
     // convert parameter_datetime into a jiff::Zoned
     let mut zoned_parameter_datetime =
-        parse_datetime_string_add_nanos_optionally(&parameter_datetime, None, param_span)?;
+        parse_datetime_string_add_nanos_optionally(&parameter_datetime, None, param_span, None)?;
 
     // Check to see if biggest_unit_opt and smallest_unit_opt are both provided or as_unit_opt is provided
     if (biggest_unit_opt.is_some() || smallest_unit_opt.is_some()) && as_unit_opt.is_some() {
@@ -199,9 +199,9 @@ fn calculate_date_diff(
     }
 
     if zoned_input_datetime.time_zone() == zoned_parameter_datetime.time_zone() {
-        eprintln!("Timezones are the same");
+        // eprintln!("Timezones are the same");
     } else {
-        eprintln!("Timezones are different");
+        // eprintln!("Timezones are different");
         // let zdt_input_ts = zoned_input_datetime.timestamp();
         // let zdt_parameter_ts = zoned_parameter_datetime.timestamp();
         // eprintln!(
