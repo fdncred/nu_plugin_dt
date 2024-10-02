@@ -1,6 +1,9 @@
 use super::utils::parse_datetime_string_add_nanos_optionally;
 use crate::DtPlugin;
-use jiff::{fmt::strtime, Zoned};
+use jiff::{
+    fmt::{rfc2822, strtime},
+    Zoned,
+};
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
 use nu_protocol::{
     record, Category, Example, LabeledError, Signature, Span as NuSpan, SyntaxShape, Value,
@@ -160,6 +163,10 @@ pub(crate) fn generate_strftime_list(head: NuSpan, show_parse_only_formats: bool
             description: "A literal %.",
         },
         FormatSpecification {
+            spec: "%+",
+            description: "ISO 8601 / RFC 3339 date & time format.",
+        },
+        FormatSpecification {
             spec: "%A",
             description: "The full and abbreviated weekday, respectively.",
         },
@@ -174,6 +181,11 @@ pub(crate) fn generate_strftime_list(head: NuSpan, show_parse_only_formats: bool
         FormatSpecification {
             spec: "%b",
             description: "The full and abbreviated month name, respectively.",
+        },
+        FormatSpecification {
+            spec: "%c",
+            description:
+                "Locale's date and time in rfc2822 format (e.g., Wed, 2 Oct 2024 12:53:44 -0500).",
         },
         FormatSpecification {
             spec: "%h",
@@ -376,7 +388,17 @@ pub(crate) fn generate_strftime_list(head: NuSpan, show_parse_only_formats: bool
             Value::record(
                 record! {
                     "Specification" => Value::string(s.spec, head),
-                    "Example" => Value::string(now.strftime(s.spec).to_string(), head),
+                    "Example" => {
+                        if s.spec == "%+" {
+                            Value::string(now.timestamp().to_string(), head)
+                        } else if s.spec == "%c" {
+                            let rfc2822 = rfc2822::to_string(&now).unwrap_or_default();
+                            Value::string(rfc2822, head)
+                        }
+                        else {
+                            Value::string(now.strftime(s.spec).to_string(), head)
+                        }
+                    },
                     "Description" => Value::string(s.description, head),
                 },
                 head,
