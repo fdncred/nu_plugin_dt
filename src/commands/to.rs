@@ -31,7 +31,12 @@ impl SimplePluginCommand for DtTo {
         vec![Example {
             example: "'07/09/24' | dt to",
             description: "Print the piped in date or datetime in various standard formats",
-            result: None,
+            result: Some(Value::test_record(record! {
+                "rfc9557" => Value::test_string("2024-07-09T00:00:00-05:00[America/Chicago]"),
+                "rfc3339" => Value::test_string("2024-07-09T05:00:00Z"),
+                "rfc2822" => Value::test_string("Tue, 9 Jul 2024 00:00:00 -0500"),
+                "iso8601" => Value::test_string("2024-07-09T00:00:00-05:00"),
+            })),
         }]
     }
 
@@ -52,11 +57,11 @@ impl SimplePluginCommand for DtTo {
         let datetime = match input {
             Value::Date { val, .. } => {
                 // so much easier just to output chrono as rfc 3339 and let jiff parse it
-                parse_datetime_string_add_nanos_optionally(&val.to_rfc3339(), None, span)?
+                parse_datetime_string_add_nanos_optionally(&val.to_rfc3339(), None, span, None)?
             }
             Value::String { val, .. } => {
                 // eprintln!("String: {:?}", val);
-                parse_datetime_string_add_nanos_optionally(val, None, span)?
+                parse_datetime_string_add_nanos_optionally(val, None, span, None)?
             }
             _ => {
                 return Err(LabeledError::new(

@@ -50,12 +50,12 @@ impl SimplePluginCommand for DtPart {
                 example: "(date now) | dt part mon",
                 description:
                     "Return the month part of the provided nushell datetime from the date command",
-                result: Some(Value::test_int(8)),
+                result: None,
             },
             Example {
                 example: "(dt now) | dt part wk",
                 description: "Return the week part of the provided datetime from the dt command",
-                result: Some(Value::test_int(8)),
+                result: None,
             },
         ]
     }
@@ -104,11 +104,16 @@ impl SimplePluginCommand for DtPart {
 
                         // so much easier just to output chrono as rfc 3339 and let jiff parse it
 
-                        parse_datetime_string_add_nanos_optionally(&val.to_rfc3339(), None, span)?
+                        parse_datetime_string_add_nanos_optionally(
+                            &val.to_rfc3339(),
+                            None,
+                            span,
+                            None,
+                        )?
                     }
                     Value::String { val, .. } => {
                         // eprintln!("Zoned: {:?}", zdt);
-                        parse_datetime_string_add_nanos_optionally(val, None, span)?
+                        parse_datetime_string_add_nanos_optionally(val, None, span, None)?
                     }
                     _ => return Err(LabeledError::new("Expected a date or datetime".to_string())),
                 };

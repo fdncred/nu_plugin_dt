@@ -59,11 +59,11 @@ impl SimplePluginCommand for DtFormat {
         let datetime = match input {
             Value::Date { val, .. } => {
                 // so much easier just to output chrono as rfc 3339 and let jiff parse it
-                parse_datetime_string_add_nanos_optionally(&val.to_rfc3339(), None, span)?
+                parse_datetime_string_add_nanos_optionally(&val.to_rfc3339(), None, span, None)?
             }
             Value::String { val, .. } => {
                 // eprintln!("String: {:?}", val);
-                parse_datetime_string_add_nanos_optionally(val, None, span)?
+                parse_datetime_string_add_nanos_optionally(val, None, span, None)?
             }
             _ => {
                 return Err(LabeledError::new(

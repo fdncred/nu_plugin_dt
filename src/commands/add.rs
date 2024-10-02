@@ -1,8 +1,10 @@
 use super::utils::parse_datetime_string_add_nanos_optionally;
 use crate::DtPlugin;
+use jiff::Span as JiffSpan;
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
-use nu_protocol::{Category, Example, LabeledError, Signature, SyntaxShape, Value};
-
+use nu_protocol::{
+    Category, Example, LabeledError, Signature, Span as NuSpan, Spanned, SyntaxShape, Value,
+};
 pub struct DtAdd;
 
 impl SimplePluginCommand for DtAdd {
@@ -16,14 +18,14 @@ impl SimplePluginCommand for DtAdd {
         Signature::build(self.name())
             .required(
                 "duration",
-                SyntaxShape::Duration,
+                SyntaxShape::String,
                 "Duration to add to the provided in date and time",
             )
             .category(Category::Date)
     }
 
     fn description(&self) -> &str {
-        "Add a duration to the provided in date and time"
+        "Add a jiff duration to the provided in date and time"
     }
 
     fn search_terms(&self) -> Vec<&str> {
@@ -33,34 +35,34 @@ impl SimplePluginCommand for DtAdd {
     fn examples(&self) -> Vec<Example> {
         vec![
             Example {
-                example: "'2017-08-25' | dt add 1day",
-                description: "Add nushell duration of 1 day to the provided date string in the local timezone",
+                example: "'2017-08-25' | dt add 1d",
+                description: "Add jiff duration of 1 day to the provided date string in the local timezone",
                 result: Some(Value::test_string(
                     "2017-08-26T00:00:00-05:00[America/Chicago]",
                 )),
             },
             Example {
-                example: "'2017-08-25T12:00:00' | dt add 1hr",
-                description: "Add nushell duration of 1 hour to the provided date and time string in the local timezone",
+                example: "'2017-08-25T12:00:00' | dt add T1h",
+                description: "Add jiff duration of 1 hour to the provided date and time string in the local timezone",
                 result: Some(Value::test_string(
                     "2017-08-25T13:00:00-05:00[America/Chicago]",
                 )),
             },
             Example {
-                example: "2017-08-25 | dt add 2wk",
-                description: "Add nushell duration of 2 weeks to the provided nushell date in the local timezone",
+                example: "2017-08-25 | dt add 2w",
+                description: "Add jiff duration of 2 weeks to the provided nushell date in the local timezone",
                 result: Some(Value::test_string(
-                    "2017-09-07T19:00:00-05:00[America/Chicago]",
+                    "2017-09-08T00:00:00-05:00[America/Chicago]",
                 )),
             },
             Example {
-                example: "(dt now) | dt add 2wk",
-                description: "Add nushell duration of 2 weeks to the provided dt command date in the local timezone",
+                example: "dt now | dt add 2w",
+                description: "Add jiff duration of 2 weeks to the provided dt command date in the local timezone",
                 result: None,
             },
             Example {
-                example: "(date now) | dt add 2wk",
-                description: "Add nushell duration of 2 weeks to the provided date command date in the local timezone",
+                example: "date now | dt add 2w",
+                description: "Add jiff duration of 2 weeks to the provided date command date in the local timezone",
                 result: None,
             },
         ]
@@ -73,72 +75,99 @@ impl SimplePluginCommand for DtAdd {
         call: &EvaluatedCall,
         input: &Value,
     ) -> Result<Value, LabeledError> {
-        // Currently, the duration is a Value::Duration from nushell which is limited to only a few types of durations.
-        // This is a limitation of nushell and not jiff.
-        // In order to use jiff, we need to create a new duration type that can be parsed by jiff.
-
         // From weirdan
         // If no timezone is specified, assume local tz. Provide a way to override that. Alternatively, reject dates without a timezone.
 
-        let span = input.span();
-        let duration: Value = call.req(0)?;
-        let duration_nanos = match duration.as_duration() {
-            Ok(duration) => duration,
-            Err(_) => {
-                return Err(LabeledError::new("Expected a duration".to_string()));
-            }
-        };
+        let span: NuSpan = input.span();
+        // TODO: Accomodate negative jiff spans like -P1d
+        let mut duration_string: Spanned<String> = call.req(0)?;
 
-        // eprintln!("Duration: {:?}", duration_nanos);
+        // The jiff span is roughly comparable to this
+        // P(\d+y)?(\d+m)?(\d+w)?(\d+d)?(T(\d+h)?(\d+m)?(\d+s)?)?
+        // P = date designator
+        // y = years
+        // m = months
+        // w = weeks
+        // d = days
+        // T = time designator
+        // h = hours
+        // m = minutes
+        // s = seconds
+        // .000 = milliseconds
+        // .000000 = microseconds
+        // .000000000 = nanoseconds
+
+        // is it negative
+        if (duration_string.item.starts_with('-')
+            || duration_string.item.starts_with('+'))
+            // is it longer than 2
+            && duration_string.item.len() > 2
+            // is the 2nd character not a P
+            && duration_string.item.chars().nth(1).unwrap() != 'P'
+        {
+            duration_string.item.insert(1, 'P');
+        } else if !duration_string.item.starts_with('P') {
+            // else if it doesn't start with P, add it because jiff's span parser requires it
+            duration_string.item.insert(0, 'P');
+        }
+
+        let jiff_span: JiffSpan = duration_string.item.parse().map_err(|err| {
+            LabeledError::new(format!("Error parsing duration: {err}"))
+                .with_label(
+                    format!("error parsing {:?} as a jiff span", duration_string.item),
+                    duration_string.span,
+                )
+                .with_help(
+                    r#"These are the valid component abbreviations:
++ = positive
+- = negative
+P = date designator (inferred if you forget it)
+y = years
+m = months
+w = weeks
+d = days
+T = time designator
+h = hours
+m = minutes
+s = seconds
+.000 = milliseconds
+.000000 = microseconds
+.000000000 = nanoseconds
+"#,
+                )
+        })?;
+
+        // eprintln!("Jiff span: {:?}", jiff_span);
 
         let datetime = match input {
             Value::Date { val, .. } => {
-                // dbg!(val.timezone());
-                // dbg!(val.offset());
-                // dbg!(val.fixed_offset());
-                // dbg!(val.to_rfc2822());
-                // dbg!(val.to_rfc3339());
-
-                // eprintln!("Date: {:?}", val);
-                // let local_tz = Zoned::now().time_zone().clone();
-
-                // // get chrono nanoseconds
-                // let chrono_nanos = val.timestamp_nanos_opt().ok_or_else(|| {
-                //     LabeledError::new("Expected a date or datetime string".to_string())
-                // })?;
-                // // create jiff timestamp from chrono nanoseconds
-                // let jd = Timestamp::from_nanosecond(chrono_nanos as i128)
-                //     .map_err(|err| LabeledError::new(err.to_string()))?;
-                // // add the duration nanoseconds to the jiff timestamp
-                // let jd_plus_nanos = jd
-                //     .checked_add(duration_nanos.nanoseconds())
-                //     .map_err(|err| LabeledError::new(format!("Error adding duration: {err}")))?;
-                // // get the chrono timezone
-                // let tz_fixed = val.timezone();
-                // // eprintln!("tz_fixed: {:?}", tz_fixed);
-                // // TODO: This is a little wonky. If the timezone is UTC, we set the jiff local timezone.
-                // // but what happens if the user wants UTC?
-                // // we should probably allow the user to specify the timezone or just always output in UTC.
-                // if tz_fixed.to_string() == "+00:00" {
-                //     // set the jiff local timezone
-                //     jd_plus_nanos.to_zoned(local_tz)
-                // } else {
-                //     // set the jiff zoned timezone
-                //     jd_plus_nanos.to_zoned(TimeZone::fixed(tz::offset(
-                //         (tz_fixed.local_minus_utc() / 3600) as i8,
-                //     )))
-                // }
-
                 // so much easier just to output chrono as rfc 3339 and let jiff parse it
-                parse_datetime_string_add_nanos_optionally(
-                    &val.to_rfc3339(),
-                    Some(duration_nanos),
-                    span,
-                )?
+
+                // parse_datetime_string_add_nanos_optionally(
+                //     &val.to_rfc3339(),
+                //     Some(duration_nanos as i64),
+                //     span,
+                //     None,
+                // )?
+
+                // Check for just a date like 2017-08-25 being passed in. If it is, then the time will be 00:00:00+00:00
+                let mut rfc3399 = val.to_rfc3339();
+                if rfc3399.ends_with("T00:00:00+00:00") {
+                    if let Some(empty_time) = rfc3399.rfind("T00:00:00+00:00") {
+                        rfc3399 = rfc3399[0..empty_time].to_string();
+                    }
+                }
+                parse_datetime_string_add_nanos_optionally(&rfc3399, None, span, Some(jiff_span))?
             }
             Value::String { val, .. } => {
                 // eprintln!("String: {:?}", val);
-                parse_datetime_string_add_nanos_optionally(val, Some(duration_nanos), span)?
+                // parse_datetime_string_add_nanos_optionally(
+                //     val,
+                //     Some(duration_nanos as i64),
+                //     span,
+                //     None,
+                // )?
+                parse_datetime_string_add_nanos_optionally(val, None, span, Some(jiff_span))?
             }
             _ => {
                 return Err(LabeledError::new(
