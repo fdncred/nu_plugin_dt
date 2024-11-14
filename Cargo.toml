@@ -11,17 +11,17 @@ license = "MIT"
 
 [dependencies]
 # nushell dependencies
-nu-plugin = "0.98.0"
-nu-protocol = "0.98.0"
-nu-path = "0.98.0"
+nu-plugin = { version = "0.100.0", path = "../nushell/crates/nu-plugin" }
+nu-protocol = { version = "0.100.0", path = "../nushell/crates/nu-protocol" }
+nu-path = { version = "0.100.0", path = "../nushell/crates/nu-path" }
 
 # for local development, you can use a path dependency
 # nu-plugin = { path = "../nushell/crates/nu-plugin", version = "0.98.0" }
 # nu-protocol = { path = "../nushell/crates/nu-protocol", version = "0.98.0" }
 # nu-path = { path = "../nushell/crates/nu-path", version = "0.98.0" }
 
-jiff = { version = "0.1.8", features = ["logging", "serde"] }
+jiff = { version = "0.1.14", features = ["logging", "serde"] }
 
 [dev-dependencies]
-nu-plugin-test-support = { version = "0.98.0" }
+nu-plugin-test-support = { version = "0.100.0" }
 # nu-plugin-test-support = { path = "../nushell/crates/nu-plugin-test-support", version = "0.97.2" }
