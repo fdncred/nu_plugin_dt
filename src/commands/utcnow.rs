@@ -41,7 +41,7 @@ impl SimplePluginCommand for DtUtcNow {
         _input: &Value,
     ) -> Result<Value, LabeledError> {
         let nowutc = Zoned::now()
-            .intz("UTC")
+            .in_tz("UTC")
             .map_err(|err| LabeledError::new(err.to_string()))?;
         let nanos = nowutc.timestamp().as_nanosecond();
         convert_nanos_to_nushell_datetime_value(nanos, engine, call.head, true)

@@ -313,7 +313,7 @@ pub fn get_part_from_zoned_as_i16(
         "week" | "weeks" | "ww" | "wk" | "wks" | "iso_week" | "isowk" | "isoww" => {
             let date = civil::Date::new(datetime.year(), datetime.month(), datetime.day())
             .map_err(|err| LabeledError::new(err.to_string()))?;
-            date.to_iso_week_date().week() as i16
+            date.iso_week_date().week() as i16
         }
         "weekday" | "wd" | "wds" | "w" => datetime.weekday().to_sunday_zero_offset().into(),
         "hour" | "hours" | "hh" | "hr" | "hrs" => datetime.hour().into(),

@@ -1,6 +1,6 @@
 [package]
 name = "nu_plugin_dt"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Darren Schroeder <343840+fdncred@users.noreply.github.com>"]
 edition = "2021"
 description = "a nushell plugin called dt"
@@ -11,17 +11,17 @@ license = "MIT"
 
 [dependencies]
 # nushell dependencies
-nu-plugin = "0.101.0"
-nu-protocol = "0.101.0"
-nu-path = "0.101.0"
+nu-plugin = "0.102.0"
+nu-protocol = "0.102.0"
+nu-path = "0.102.0"
 
 # for local development, you can use a path dependency
-# nu-plugin = { path = "../nushell/crates/nu-plugin", version = "0.98.0" }
-# nu-protocol = { path = "../nushell/crates/nu-protocol", version = "0.98.0" }
-# nu-path = { path = "../nushell/crates/nu-path", version = "0.98.0" }
+# nu-plugin = { version = "0.102.1", path = "../nushell/crates/nu-plugin" }
+# nu-protocol = { version = "0.102.1", path = "../nushell/crates/nu-protocol" }
+# nu-path = { version = "0.102.1", path = "../nushell/crates/nu-path" }
 
-jiff = { version = "0.1.15", features = ["logging", "serde"] }
+jiff = { version = "0.2.0", features = ["logging", "serde"] }
 
 [dev-dependencies]
-nu-plugin-test-support = "0.101.0"
-# nu-plugin-test-support = { path = "../nushell/crates/nu-plugin-test-support", version = "0.97.2" }
+nu-plugin-test-support = "0.102.0"
+# nu-plugin-test-support = { path = "../nushell/crates/nu-plugin-test-support", version = "0.102.1" }
