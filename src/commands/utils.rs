@@ -1,5 +1,14 @@
 use jiff::{
-    civil, fmt::temporal::DateTimeParser, tz, tz::TimeZone, Span as JiffSpan, ToSpan, Unit, Zoned,
+    civil,
+    //fmt::friendly::{Designator, Spacing, SpanPrinter},
+    fmt::temporal::{DateTimeParser, Pieces},
+    tz,
+    tz::{OffsetConflict, TimeZone},
+    Span as JiffSpan,
+    Timestamp,
+    ToSpan,
+    Unit,
+    Zoned,
 };
 use nu_plugin::{EngineInterface, EvaluatedCall};
 use nu_protocol::{
@@ -56,6 +65,107 @@ pub fn convert_nanos_to_nushell_datetime_value(
     )?;
     let datetime = into_datetime.into_value(span)?;
     Ok(datetime)
+}
+
+pub fn parse_datetime_string_into_pieces(
+    s: &str,
+    duration_nanos: Option<i64>,
+    span: NuSpan,
+    jiff_span: Option<JiffSpan>,
+) -> Result<Zoned, LabeledError> {
+    // let timestamp = "2024-06-14T17:30-05[America/New_York]";
+    let timestamp = s;
+    // The default for conflict resolution when parsing into a `Zoned` is
+    // actually `Reject`, but we use `AlwaysOffset` here to show a different
+    // strategy. You'll want to pick the conflict resolution that suits your
+    // needs. The `Reject` strategy is what you should pick if you aren't
+    // sure.
+    let conflict_resolution = OffsetConflict::AlwaysOffset;
+
+    let pieces = Pieces::parse(timestamp).map_err(|err| {
+        LabeledError::new(err.to_string()).with_label(
+            format!("Could not parse pieces datetime string: {:?}", s),
+            span,
+        )
+    })?;
+    let time = pieces.time().unwrap_or_else(jiff::civil::Time::midnight);
+    let dt = pieces.date().to_datetime(time);
+    let ambiguous_zdt = match pieces.to_time_zone().map_err(|err| {
+        LabeledError::new(err.to_string()).with_label(
+            format!("Could not parse time zone of datetime string: {:?}", s),
+            span,
+        )
+    })? {
+        Some(tz) => match pieces.to_numeric_offset() {
+            None => tz.into_ambiguous_zoned(dt),
+            Some(offset) => conflict_resolution.resolve(dt, offset, tz).map_err(|err| {
+                LabeledError::new(err.to_string()).with_label(
+                    format!(
+                        "Could not parse conflict resolution for datetime string: {:?}",
+                        s
+                    ),
+                    span,
+                )
+            })?,
+        },
+        None => {
+            let Some(offset) = pieces.to_numeric_offset() else {
+                let msg = format!(
+                    "timestamp `{timestamp}` has no time zone \
+                 or offset, and thus cannot be parsed into \
+                 an instant",
+                );
+                return Err(LabeledError::new(msg).with_label(
+                    format!("Could not parse numeric offset of datetime string: {:?}", s),
+                    span,
+                ));
+            };
+            // Won't even be ambiguous, but gets us the same
+            // type as the branch above.
+            TimeZone::fixed(offset).into_ambiguous_zoned(dt)
+        }
+    };
+    // We do compatible disambiguation here like we do in the previous
+    // examples, but you could choose any strategy. As with offset conflict
+    // resolution, if you aren't sure what to pick, a safe choice here would
+    // be `ambiguous_zdt.unambiguous()`, which will return an error if the
+    // datetime is ambiguous in any way. Then, if you ever hit an error, you
+    // can examine the case to see if it should be handled in a different way.
+    let zdt = ambiguous_zdt
+        .compatible()
+        .map_err(|err| LabeledError::new(err.to_string()))?;
+    // Notice that we now have a different civil time and offset, but the
+    // instant it corresponds to is the same as the one we started with.
+    // assert_eq!(
+    //     zdt.to_string(),
+    //     "2024-06-14T18:30:00-04:00[America/New_York]"
+    // );
+    let date_time = zdt;
+
+    if let Some(nanos) = duration_nanos {
+        let date_plus_duration = date_time
+            .checked_add(nanos.nanoseconds())
+            .map_err(|err| LabeledError::new(err.to_string()))?;
+        Ok(date_plus_duration)
+        // Ok(date_plus_duration.to_zoned(tz))
+    } else if let Some(jiff_span) = jiff_span {
+        let zdt2 = date_time
+            .checked_add(jiff_span)
+            .map_err(|err| LabeledError::new(err.to_string()))?;
+        Ok(zdt2)
+    } else {
+        // This is converting all dates to the current timezone, which is wrong
+        // let zdt = date_time
+        //     .to_zoned(local_tz)
+        //     .map_err(|err| LabeledError::new(err.to_string()))?;
+
+        // let zdt = date_time.to_zoned(local_tz);
+        // Ok(zdt)
+        Ok(date_time)
+        // Ok(date_time.to_zoned(tz))
+    }
+
+    // Ok(zdt)
 }
 
 // Parse a string into a jiff datetime and add nanoseconds to it optionally
@@ -494,6 +604,18 @@ pub fn get_unit_abbreviations() -> Vec<Value> {
 }
 
 pub fn create_nushelly_duration_string(span: jiff::Span) -> String {
+    // jiff's friendly format
+    // format!("{span:#}")
+    // with some configuration
+    // Nushell               - 5yrs 2mths 3wks 6days 21hrs 37mins 30secs 367ms 322µs 100ns
+    // Designator::Compact   - 5y 2mo 27d 21h 37m 30s 367ms 322µs 100ns
+    // Designator::HumanTime - 5y 2months 27d 21h 37m 30s 367ms 322us 100ns
+    // Designator::Short     - 5yrs 2mos 27days 21hrs 37mins 30secs 367msecs 322µsecs 100nsecs
+    // Designator::Verbose   - 5years 2months 27days 21hours 37minutes 30seconds 367milliseconds 322microseconds 100nanoseconds
+    //
+    // let printer = SpanPrinter::new().designator(Designator::Verbose);
+    // printer.span_to_string(&span)
+
     let mut span_vec = vec![];
     if span.get_years() > 0 {
         span_vec.push(format!("{}yrs", span.get_years()));
@@ -558,6 +680,19 @@ fn strptime_relaxed(fmt: &str, input: &str) -> Result<Zoned, jiff::Error> {
     let mut tm = jiff::fmt::strtime::parse(fmt, input)?;
     tm.set_weekday(None);
     tm.to_zoned()
+}
+
+pub fn unix_timestamp_in_seconds_to_local_zoned(
+    unix_timestamp: i64,
+) -> Result<String, LabeledError> {
+    // Convert the Unix timestamp (in seconds) to a Jiff Timestamp (in nanoseconds)
+    let timestamp = Timestamp::from_second(unix_timestamp)
+        .map_err(|err| LabeledError::new(format!("Error converting Unix timestamp: {:?}", err)))?;
+
+    // Format the timestamp as a datetime string without timezone
+    let datetime = timestamp.strftime("%Y-%m-%d %H:%M:%S");
+
+    Ok(datetime.to_string())
 }
 
 #[cfg(test)]
@@ -773,6 +908,145 @@ mod tests {
         let span = NuSpan::unknown();
 
         let result = parse_datetime_string_add_nanos_optionally(s, duration_nanos, span, None);
+        assert!(result.is_ok());
+        let datetime = result.unwrap();
+        assert_eq!(datetime.second(), 7);
+    }
+
+    #[test]
+    fn test_parse_datetime_string_add_nanos_optionally_case1b() {
+        let s = "2022-01-01T00:00:00+00:00";
+        let duration_nanos = Some(1_000_000_000); // 1 second
+        let span = NuSpan::unknown();
+
+        let result = parse_datetime_string_into_pieces(s, duration_nanos, span, None);
+        assert!(result.is_ok());
+        let datetime = result.unwrap();
+        assert_eq!(datetime.second(), 1);
+    }
+
+    #[test]
+    fn test_parse_datetime_string_add_nanos_optionally_case2b() {
+        let s = "2022-01-01T00:00:00+00:00";
+        let duration_nanos = Some(60_000_000_000); // 1 minute
+        let span = NuSpan::unknown();
+
+        let result = parse_datetime_string_into_pieces(s, duration_nanos, span, None);
+        assert!(result.is_ok());
+        let datetime = result.unwrap();
+        assert_eq!(datetime.minute(), 1);
+    }
+
+    #[test]
+    fn test_parse_datetime_string_add_nanos_optionally_case3b() {
+        let s = "2022-01-01T00:00:00+00:00";
+        let duration_nanos = Some(3_600_000_000_000); // 1 hour
+        let span = NuSpan::unknown();
+
+        let result = parse_datetime_string_into_pieces(s, duration_nanos, span, None);
+        assert!(result.is_ok());
+        let datetime = result.unwrap();
+        assert_eq!(datetime.hour(), 1);
+    }
+
+    #[test]
+    fn test_parse_datetime_string_add_nanos_optionally_case4b() {
+        let s = "2022-01-01T00:00:00+00:00";
+        let duration_nanos = Some(86_400_000_000_000); // 1 day
+        let span = NuSpan::unknown();
+
+        let result = parse_datetime_string_into_pieces(s, duration_nanos, span, None);
+        assert!(result.is_ok());
+        let datetime = result.unwrap();
+        assert_eq!(datetime.day(), 2);
+    }
+
+    #[test]
+    fn test_parse_datetime_string_add_nanos_optionally_case5b() {
+        let s = "2022-01-01T00:00:00+00:00";
+        let duration_nanos = None;
+        let span = NuSpan::unknown();
+
+        let result = parse_datetime_string_into_pieces(s, duration_nanos, span, None);
+        assert!(result.is_ok());
+        let datetime = result.unwrap();
+        assert_eq!(datetime.second(), 0);
+    }
+
+    #[test]
+    fn test_parse_datetime_string_add_nanos_optionally_case6b() {
+        let s = "2022-01-01";
+        let duration_nanos = None;
+        let span = NuSpan::unknown();
+
+        let result = parse_datetime_string_into_pieces(s, duration_nanos, span, None);
+        assert!(result.is_ok());
+        let datetime = result.unwrap();
+        assert_eq!(datetime.second(), 0);
+    }
+
+    #[test]
+    fn test_parse_datetime_string_add_nanos_optionally_case7b() {
+        let s = "2022-01-01";
+        let duration_nanos = Some(86_400_000_000_000); // 1 day
+        let span = NuSpan::unknown();
+
+        let result = parse_datetime_string_into_pieces(s, duration_nanos, span, None);
+        assert!(result.is_ok());
+        let datetime = result.unwrap();
+        assert_eq!(datetime.day(), 2);
+    }
+
+    #[test]
+    fn test_parse_datetime_string_add_nanos_optionally_case8b() {
+        let s = "2022-01-01T00:00:00.123456789+00:00";
+        let duration_nanos = None;
+        let span = NuSpan::unknown();
+
+        let result = parse_datetime_string_into_pieces(s, duration_nanos, span, None);
+        assert!(result.is_ok());
+        let datetime = result.unwrap();
+        assert_eq!(datetime.hour(), 0);
+        assert_eq!(datetime.minute(), 0);
+        assert_eq!(datetime.second(), 0);
+        assert_eq!(datetime.millisecond(), 123);
+        assert_eq!(datetime.microsecond(), 456);
+        assert_eq!(datetime.nanosecond(), 789);
+    }
+
+    #[test]
+    fn test_parse_datetime_string_add_nanos_optionally_case9b() {
+        let s = "2022-01-01T00:00:00.123456789+00:00";
+        let duration_nanos = Some(1_000_000_000); // 1 second
+        let span = NuSpan::unknown();
+
+        let result = parse_datetime_string_into_pieces(s, duration_nanos, span, None);
+        assert!(result.is_ok());
+        let datetime = result.unwrap();
+
+        assert_eq!(datetime.second(), 1);
+        assert_eq!(datetime.nanosecond(), 789);
+    }
+
+    #[test]
+    fn test_parse_datetime_string_add_nanos_optionally_case10b() {
+        let s = "Thu, 18 Aug 2022 12:45:06 +0800";
+        let duration_nanos = None;
+        let span = NuSpan::unknown();
+
+        let result = parse_datetime_string_into_pieces(s, duration_nanos, span, None);
+        assert!(result.is_ok());
+        let datetime = result.unwrap();
+        assert_eq!(datetime.second(), 6);
+    }
+
+    #[test]
+    fn test_parse_datetime_string_add_nanos_optionally_case11b() {
+        let s = "Thu, 18 Aug 2022 12:45:06 +0800";
+        let duration_nanos = Some(1_000_000_000); // 1 second
+        let span = NuSpan::unknown();
+
+        let result = parse_datetime_string_into_pieces(s, duration_nanos, span, None);
         assert!(result.is_ok());
         let datetime = result.unwrap();
         assert_eq!(datetime.second(), 7);
