@@ -1,4 +1,6 @@
-use super::utils::parse_datetime_string_add_nanos_optionally;
+use super::utils::{
+    parse_datetime_string_add_nanos_optionally, unix_timestamp_in_seconds_to_local_zoned,
+};
 use crate::DtPlugin;
 use jiff::{fmt::rfc2822, Zoned};
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
@@ -78,6 +80,11 @@ impl SimplePluginCommand for DtFormat {
                 // eprintln!("String: {:?}", val);
                 parse_datetime_string_add_nanos_optionally(val, None, span, None)?
             }
+            Value::Int { val, .. } => {
+                // eprintln!("Int: {:?}", val);
+                let dt_str = unix_timestamp_in_seconds_to_local_zoned(*val)?;
+                parse_datetime_string_add_nanos_optionally(&dt_str, None, span, None)?
+            }
             _ => {
                 return Err(LabeledError::new(
                     "Expected a date or datetime in add".to_string(),
@@ -101,19 +108,6 @@ impl SimplePluginCommand for DtFormat {
         // })?;
         Ok(Value::string(formatted_dt, span))
     }
-}
-
-#[test]
-fn test_examples() -> Result<(), nu_protocol::ShellError> {
-    use nu_plugin_test_support::PluginTest;
-
-    // This will automatically run the examples specified in your command and compare their actual
-    // output against what was specified in the example.
-    //
-    // We recommend you add this test to any other commands you create, or remove it if the examples
-    // can't be tested this way.
-
-    PluginTest::new("dt", DtPlugin.into())?.test_command_examples(&DtFormat)
 }
 
 // ❯ http get "https://docs.rs/jiff/latest/jiff/fmt/strtime/index.html" | query web -t [Specifier Example Description]                                                                            34  01:34:51 PM
@@ -148,7 +142,7 @@ fn test_examples() -> Result<(), nu_protocol::ShellError> {
 /// # Arguments
 /// * `head` - use the call's head
 /// * `show_parse_only_formats` - whether parse-only format specifiers (that can't be outputted) should be shown. Should only be used for `into datetime`, not `format date`
-pub(crate) fn generate_strftime_list(head: NuSpan, show_parse_only_formats: bool) -> Value {
+pub fn generate_strftime_list(head: NuSpan, show_parse_only_formats: bool) -> Value {
     // let now = Local::now();
     let now = Zoned::now();
 
@@ -168,19 +162,27 @@ pub(crate) fn generate_strftime_list(head: NuSpan, show_parse_only_formats: bool
         },
         FormatSpecification {
             spec: "%A",
-            description: "The full and abbreviated weekday, respectively.",
+            description: "The full weekday.",
         },
         FormatSpecification {
             spec: "%a",
-            description: "The full and abbreviated weekday, respectively.",
+            description: "The abbreviated weekday.",
         },
         FormatSpecification {
             spec: "%B",
-            description: "The full and abbreviated month name, respectively.",
+            description: "The full month name.",
         },
         FormatSpecification {
             spec: "%b",
-            description: "The full and abbreviated month name, respectively.",
+            description: "The abbreviated month name.",
+        },
+        FormatSpecification {
+            spec: "%h",
+            description: "The abbreviated month name.",
+        },
+        FormatSpecification {
+            spec: "%C",
+            description: "The century of the year. No padding.",
         },
         FormatSpecification {
             spec: "%c",
@@ -188,20 +190,16 @@ pub(crate) fn generate_strftime_list(head: NuSpan, show_parse_only_formats: bool
                 "Locale's date and time in rfc2822 format (e.g., Wed, 2 Oct 2024 12:53:44 -0500).",
         },
         FormatSpecification {
-            spec: "%h",
-            description: "The full and abbreviated month name, respectively.",
-        },
-        FormatSpecification {
             spec: "%D",
             description: "Equivalent to %m/%d/%y.",
         },
         FormatSpecification {
             spec: "%d",
-            description: "Day number (01--31), zero-padded to 2 digits.",
+            description: "The day of the month. Zero-padded.",
         },
         FormatSpecification {
             spec: "%e",
-            description: "The day of the month. %d is zero-padded, %e is space padded.",
+            description: "The day of the month. Space padded.",
         },
         FormatSpecification {
             spec: "%F",
@@ -240,12 +238,33 @@ pub(crate) fn generate_strftime_list(head: NuSpan, show_parse_only_formats: bool
             description: "Similar to %.9f but without the leading dot.",
         },
         FormatSpecification {
+            spec: "%G",
+            description: "An ISO 8601 week-based year. Zero padded to 4 digits.",
+        },
+        FormatSpecification {
+            spec: "%g",
+            description:
+                "A two-digit ISO 8601 week-based year. Represents only 1969-2068. Zero padded.",
+        },
+        FormatSpecification {
             spec: "%H",
             description: "The hour in a 24 hour clock. Zero padded.",
         },
         FormatSpecification {
             spec: "%I",
             description: "The hour in a 12 hour clock. Zero padded.",
+        },
+        FormatSpecification {
+            spec: "%j",
+            description: "The day of the year. Range is 1..=366. Zero padded to 3 digits.",
+        },
+        FormatSpecification {
+            spec: "%k",
+            description: "The hour in a 24 hour clock. Space padded.",
+        },
+        FormatSpecification {
+            spec: "%l",
+            description: "The hour in a 12 hour clock. Space padded.",
         },
         FormatSpecification {
             spec: "%M",
@@ -256,28 +275,66 @@ pub(crate) fn generate_strftime_list(head: NuSpan, show_parse_only_formats: bool
             description: "The month. Zero padded.",
         },
         FormatSpecification {
+            spec: "%n",
+            description: "Formats as a newline character. Parses arbitrary whitespace.",
+        },
+        FormatSpecification {
             spec: "%P",
-            description: "Whether the time is in the AM or PM, lowercase. (am/pm)",
+            description: "Whether the time is in the am or pm, lowercase. (am/pm)",
         },
         FormatSpecification {
             spec: "%p",
-            description: "Whether the time is in the AM or PM, lowercase. (AM/PM)",
+            description: "Whether the time is in the AM or PM, uppercase. (AM/PM)",
+        },
+        FormatSpecification {
+            spec: "%Q",
+            description: "An IANA time zone identifier, or %z if one doesn’t exist.",
+        },
+        FormatSpecification {
+            spec: "%:Q",
+            description: "An IANA time zone identifier, or %:z if one doesn’t exist.",
+        },
+        FormatSpecification {
+            spec: "%R",
+            description: "Equivalent to %H:%M.",
         },
         FormatSpecification {
             spec: "%S",
             description: "The second. Zero padded.",
         },
         FormatSpecification {
+            spec: "%s",
+            description: "A Unix timestamp, in seconds.",
+        },
+        FormatSpecification {
             spec: "%T",
             description: "Equivalent to %H:%M:%S.",
         },
         FormatSpecification {
-            spec: "%V",
-            description: "An IANA time zone identifier, or %z if one doesn't exist.",
+            spec: "%t",
+            description: "Formats as a tab character. Parses arbitrary whitespace.",
         },
         FormatSpecification {
-            spec: "%:V",
-            description: "An IANA time zone identifier, or %:z if one doesn't exist.",
+            spec: "%U",
+            description:
+                "Week number. Week 1 is the first week starting with a Sunday. Zero padded.",
+        },
+        FormatSpecification {
+            spec: "%u",
+            description: "The day of the week beginning with Monday at 1.",
+        },
+        FormatSpecification {
+            spec: "%V",
+            description: "Week number in the ISO 8601 week-based calendar. Zero padded.",
+        },
+        FormatSpecification {
+            spec: "%W",
+            description:
+                "Week number. Week 1 is the first week starting with a Monday. Zero padded.",
+        },
+        FormatSpecification {
+            spec: "%w",
+            description: "The day of the week beginning with Sunday at 0.",
         },
         FormatSpecification {
             spec: "%Y",
@@ -394,6 +451,10 @@ pub(crate) fn generate_strftime_list(head: NuSpan, show_parse_only_formats: bool
                         } else if s.spec == "%c" {
                             let rfc2822 = rfc2822::to_string(&now).unwrap_or_default();
                             Value::string(rfc2822, head)
+                        } else if s.spec == "%n" {
+                            Value::string("\\n", head)
+                        } else if s.spec == "%t" {
+                            Value::string("\\t", head)
                         }
                         else {
                             Value::string(now.strftime(s.spec).to_string(), head)
@@ -429,4 +490,17 @@ pub(crate) fn generate_strftime_list(head: NuSpan, show_parse_only_formats: bool
     }
 
     Value::list(records, head)
+}
+
+#[test]
+fn test_examples() -> Result<(), nu_protocol::ShellError> {
+    use nu_plugin_test_support::PluginTest;
+
+    // This will automatically run the examples specified in your command and compare their actual
+    // output against what was specified in the example.
+    //
+    // We recommend you add this test to any other commands you create, or remove it if the examples
+    // can't be tested this way.
+
+    PluginTest::new("dt", DtPlugin.into())?.test_command_examples(&DtFormat)
 }
