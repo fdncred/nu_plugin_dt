@@ -73,6 +73,7 @@ pub fn parse_datetime_string_into_pieces(
     span: NuSpan,
     jiff_span: Option<JiffSpan>,
 ) -> Result<Zoned, LabeledError> {
+    let system_tz = TimeZone::system();
     // let timestamp = "2024-06-14T17:30-05[America/New_York]";
     let timestamp = s;
     // The default for conflict resolution when parsing into a `Zoned` is
@@ -88,14 +89,16 @@ pub fn parse_datetime_string_into_pieces(
             span,
         )
     })?;
+    eprintln!("pieces: {:#?}", pieces);
     let time = pieces.time().unwrap_or_else(jiff::civil::Time::midnight);
+    eprintln!("time: {:#?}", time);
     let dt = pieces.date().to_datetime(time);
-    let ambiguous_zdt = match pieces.to_time_zone().map_err(|err| {
-        LabeledError::new(err.to_string()).with_label(
-            format!("Could not parse time zone of datetime string: {:?}", s),
-            span,
-        )
-    })? {
+    eprintln!("dt: {:#?}", dt);
+    // let dt_wz = pieces.to_time_zone().unwrap_or_else(|_| Some(system_tz));
+    let binding = system_tz.clone();
+    let tz_name = binding.iana_name().unwrap_or("America/Chicago");
+    let pieces = pieces.with_time_zone_name(tz_name);
+    let ambiguous_zdt = match pieces.to_time_zone().unwrap_or_else(|_| Some(system_tz)) {
         Some(tz) => match pieces.to_numeric_offset() {
             None => tz.into_ambiguous_zoned(dt),
             Some(offset) => conflict_resolution.resolve(dt, offset, tz).map_err(|err| {
@@ -109,6 +112,7 @@ pub fn parse_datetime_string_into_pieces(
             })?,
         },
         None => {
+            eprintln!("None: No time zone or offset found");
             let Some(offset) = pieces.to_numeric_offset() else {
                 let msg = format!(
                     "timestamp `{timestamp}` has no time zone \
@@ -141,7 +145,7 @@ pub fn parse_datetime_string_into_pieces(
     //     "2024-06-14T18:30:00-04:00[America/New_York]"
     // );
     let date_time = zdt;
-
+    eprintln!("date_time: {}", date_time);
     if let Some(nanos) = duration_nanos {
         let date_plus_duration = date_time
             .checked_add(nanos.nanoseconds())
@@ -980,7 +984,9 @@ mod tests {
         let span = NuSpan::unknown();
 
         let result = parse_datetime_string_into_pieces(s, duration_nanos, span, None);
+        eprint!("result: {:#?}", result);
         assert!(result.is_ok());
+
         let datetime = result.unwrap();
         assert_eq!(datetime.second(), 0);
     }
