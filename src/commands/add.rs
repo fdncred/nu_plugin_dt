@@ -32,7 +32,7 @@ impl SimplePluginCommand for DtAdd {
         vec!["date", "time", "addition", "math"]
     }
 
-    fn examples(&self) -> Vec<Example> {
+    fn examples(&self) -> Vec<Example<'_>> {
         vec![
             Example {
                 example: "'2017-08-25' | dt add 1d",
@@ -172,7 +172,7 @@ s = seconds
             _ => {
                 return Err(LabeledError::new(
                     "Expected a date or datetime in add".to_string(),
-                ))
+                ));
             }
         };
         Ok(Value::string(datetime.to_string(), call.head))

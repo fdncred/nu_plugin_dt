@@ -29,7 +29,7 @@ impl SimplePluginCommand for DtPart {
         "Return the specified part of a date and time provided"
     }
 
-    fn examples(&self) -> Vec<Example> {
+    fn examples(&self) -> Vec<Example<'_>> {
         vec![
             Example {
                 example: "'2017-08-25' | dt part yy",
@@ -48,8 +48,7 @@ impl SimplePluginCommand for DtPart {
             },
             Example {
                 example: "(date now) | dt part mon",
-                description:
-                    "Return the month part of the provided nushell datetime from the date command",
+                description: "Return the month part of the provided nushell datetime from the date command",
                 result: None,
             },
             Example {

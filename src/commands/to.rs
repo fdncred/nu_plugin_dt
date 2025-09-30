@@ -1,8 +1,8 @@
-use super::utils::{parse_datetime_string_add_nanos_optionally, ISO8601_STRICT};
+use super::utils::{ISO8601_STRICT, parse_datetime_string_add_nanos_optionally};
 use crate::DtPlugin;
 use jiff::fmt::rfc2822;
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
-use nu_protocol::{record, Category, Example, LabeledError, Signature, Value};
+use nu_protocol::{Category, Example, LabeledError, Signature, Value, record};
 
 pub struct DtTo;
 
@@ -27,7 +27,7 @@ impl SimplePluginCommand for DtTo {
         ]
     }
 
-    fn examples(&self) -> Vec<Example> {
+    fn examples(&self) -> Vec<Example<'_>> {
         vec![Example {
             example: "'07/09/24' | dt to",
             description: "Print the piped in date or datetime in various standard formats",
@@ -66,7 +66,7 @@ impl SimplePluginCommand for DtTo {
             _ => {
                 return Err(LabeledError::new(
                     "Expected a date or datetime in add".to_string(),
-                ))
+                ));
             }
         };
 

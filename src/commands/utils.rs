@@ -1,18 +1,18 @@
 use jiff::{
-    civil,
-    //fmt::friendly::{Designator, Spacing, SpanPrinter},
-    fmt::temporal::{DateTimeParser, Pieces},
-    tz,
-    tz::{OffsetConflict, TimeZone},
     Span as JiffSpan,
     Timestamp,
     ToSpan,
     Unit,
     Zoned,
+    civil,
+    //fmt::friendly::{Designator, Spacing, SpanPrinter},
+    fmt::temporal::{DateTimeParser, Pieces},
+    tz,
+    tz::{OffsetConflict, TimeZone},
 };
 use nu_plugin::{EngineInterface, EvaluatedCall};
 use nu_protocol::{
-    record, IntoSpanned, LabeledError, PipelineData, Span as NuSpan, Spanned, Value,
+    IntoSpanned, LabeledError, PipelineData, Span as NuSpan, Spanned, Value, record,
 };
 
 // Attribution: Borrowed these formats from here
@@ -67,6 +67,7 @@ pub fn convert_nanos_to_nushell_datetime_value(
     Ok(datetime)
 }
 
+#[allow(dead_code)]
 pub fn parse_datetime_string_into_pieces(
     s: &str,
     duration_nanos: Option<i64>,
@@ -412,21 +413,19 @@ pub fn get_part_from_zoned_as_i16(
 ) -> Result<i16, LabeledError> {
     let date = match part_string.as_ref() {
         "year" | "years" | "yyyy" | "yy" | "yr" | "yrs" => datetime.year(),
-        "quarter" | "qq" | "q" | "qs" | "qtr" => {
-            match datetime.month().into() {
+        "quarter" | "qq" | "q" | "qs" | "qtr" => match datetime.month().into() {
             1..=3 => 1,
             4..=6 => 2,
             7..=9 => 3,
             10..=12 => 4,
-            _ => 0
-            }
-        }
+            _ => 0,
+        },
         "month" | "months" | "mth" | "mths" | "mm" | "m" | "mon" => datetime.month().into(),
         "dayofyear" | "dy" | "doy" => datetime.day_of_year(),
         "day" | "days" | "dd" | "d" => datetime.day().into(),
         "week" | "weeks" | "ww" | "wk" | "wks" | "iso_week" | "isowk" | "isoww" => {
             let date = civil::Date::new(datetime.year(), datetime.month(), datetime.day())
-            .map_err(|err| LabeledError::new(err.to_string()))?;
+                .map_err(|err| LabeledError::new(err.to_string()))?;
             date.iso_week_date().week() as i16
         }
         "weekday" | "wd" | "wds" | "w" => datetime.weekday().to_sunday_zero_offset().into(),
@@ -442,7 +441,7 @@ pub fn get_part_from_zoned_as_i16(
         _ => {
             return Err(LabeledError::new(
                 "please supply a valid unit name to extract from a date/datetime. see dt part --list for list of abbreviations.",
-            ))
+            ));
         }
     };
 
@@ -464,7 +463,7 @@ pub fn get_unit_from_unit_string(unit_name: String) -> Result<Unit, LabeledError
         _ => {
             return Err(LabeledError::new(
                 "please supply a valid unit name to extract from a date/datetime. see dt part --list for list of abbreviations.",
-            ))
+            ));
         }
     };
 
