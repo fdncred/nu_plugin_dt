@@ -3,7 +3,7 @@ use super::utils::{
     get_unit_from_unit_string, parse_datetime_string_add_nanos_optionally,
 };
 use crate::DtPlugin;
-use jiff::{tz::TimeZone, RoundMode, Unit, ZonedDifference};
+use jiff::{RoundMode, Unit, ZonedDifference, tz::TimeZone};
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
 use nu_protocol::{Category, Example, LabeledError, Signature, Span, SyntaxShape, Value};
 
@@ -49,12 +49,14 @@ impl SimplePluginCommand for DtDiff {
         "Return the difference between two dates or datetimes provided"
     }
 
-    fn examples(&self) -> Vec<Example> {
+    fn examples(&self) -> Vec<Example<'_>> {
         vec![
             Example {
                 example: "'2019-05-10T09:59:12-07:00' | dt diff '2024-08-07T09:36:42.367322100-05:00'",
                 description: "Return the difference in the iso8601 duration format",
-                result: Some(Value::test_string("P5y2m27dT21h37m30.3673221s\n5yrs 2mths 3wks 6days 21hrs 37mins 30secs 367ms 322µs 100ns")),
+                result: Some(Value::test_string(
+                    "P5y2m27dT21h37m30.3673221s\n5yrs 2mths 3wks 6days 21hrs 37mins 30secs 367ms 322µs 100ns",
+                )),
             },
             Example {
                 example: "'2019-05-10T09:59:12-07:00' | dt diff '2024-08-07T09:36:42.367322100-05:00' --as hr",

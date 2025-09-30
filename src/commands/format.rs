@@ -2,10 +2,10 @@ use super::utils::{
     parse_datetime_string_add_nanos_optionally, unix_timestamp_in_seconds_to_local_zoned,
 };
 use crate::DtPlugin;
-use jiff::{fmt::rfc2822, Zoned};
+use jiff::{Zoned, fmt::rfc2822};
 use nu_plugin::{EngineInterface, EvaluatedCall, SimplePluginCommand};
 use nu_protocol::{
-    record, Category, Example, LabeledError, Signature, Span as NuSpan, SyntaxShape, Value,
+    Category, Example, LabeledError, Signature, Span as NuSpan, SyntaxShape, Value, record,
 };
 
 pub struct DtFormat;
@@ -40,7 +40,7 @@ impl SimplePluginCommand for DtFormat {
         vec!["date", "time", "current", "print", "strftime", "strptime"]
     }
 
-    fn examples(&self) -> Vec<Example> {
+    fn examples(&self) -> Vec<Example<'_>> {
         vec![Example {
             example: "'07/09/24' | dt format %A",
             description: "Print the full weekday",
@@ -67,7 +67,7 @@ impl SimplePluginCommand for DtFormat {
             None => {
                 return Err(LabeledError::new(
                     "Expected a format string in format".to_string(),
-                ))
+                ));
             }
         };
 
@@ -88,7 +88,7 @@ impl SimplePluginCommand for DtFormat {
             _ => {
                 return Err(LabeledError::new(
                     "Expected a date or datetime in add".to_string(),
-                ))
+                ));
             }
         };
 
@@ -186,8 +186,7 @@ pub fn generate_strftime_list(head: NuSpan, show_parse_only_formats: bool) -> Va
         },
         FormatSpecification {
             spec: "%c",
-            description:
-                "Locale's date and time in rfc2822 format (e.g., Wed, 2 Oct 2024 12:53:44 -0500).",
+            description: "Locale's date and time in rfc2822 format (e.g., Wed, 2 Oct 2024 12:53:44 -0500).",
         },
         FormatSpecification {
             spec: "%D",
@@ -243,8 +242,7 @@ pub fn generate_strftime_list(head: NuSpan, show_parse_only_formats: bool) -> Va
         },
         FormatSpecification {
             spec: "%g",
-            description:
-                "A two-digit ISO 8601 week-based year. Represents only 1969-2068. Zero padded.",
+            description: "A two-digit ISO 8601 week-based year. Represents only 1969-2068. Zero padded.",
         },
         FormatSpecification {
             spec: "%H",
@@ -316,8 +314,7 @@ pub fn generate_strftime_list(head: NuSpan, show_parse_only_formats: bool) -> Va
         },
         FormatSpecification {
             spec: "%U",
-            description:
-                "Week number. Week 1 is the first week starting with a Sunday. Zero padded.",
+            description: "Week number. Week 1 is the first week starting with a Sunday. Zero padded.",
         },
         FormatSpecification {
             spec: "%u",
@@ -329,8 +326,7 @@ pub fn generate_strftime_list(head: NuSpan, show_parse_only_formats: bool) -> Va
         },
         FormatSpecification {
             spec: "%W",
-            description:
-                "Week number. Week 1 is the first week starting with a Monday. Zero padded.",
+            description: "Week number. Week 1 is the first week starting with a Monday. Zero padded.",
         },
         FormatSpecification {
             spec: "%w",

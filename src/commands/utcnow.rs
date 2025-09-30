@@ -25,7 +25,7 @@ impl SimplePluginCommand for DtUtcNow {
         vec!["date", "time", "current"]
     }
 
-    fn examples(&self) -> Vec<Example> {
+    fn examples(&self) -> Vec<Example<'_>> {
         vec![Example {
             example: "dt utcnow",
             description: "Return the current date and time",
