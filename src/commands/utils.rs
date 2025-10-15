@@ -14,6 +14,7 @@ use nu_plugin::{EngineInterface, EvaluatedCall};
 use nu_protocol::{
     IntoSpanned, LabeledError, PipelineData, Span as NuSpan, Spanned, Value, record,
 };
+// use parse_datetime::parse_datetime;
 
 // Attribution: Borrowed these formats from here
 // https://github.com/BurntSushi/gitoxide/blob/25a3f1b0b07c01dd44df254f46caa6f78a4d3014/gix-date/src/time/format.rs
@@ -97,7 +98,7 @@ pub fn parse_datetime_string_into_pieces(
     eprintln!("dt: {:#?}", dt);
     // let dt_wz = pieces.to_time_zone().unwrap_or_else(|_| Some(system_tz));
     let binding = system_tz.clone();
-    let tz_name = binding.iana_name().unwrap_or("America/Chicago");
+    let tz_name = binding.iana_name().unwrap_or("UTC");
     let pieces = pieces.with_time_zone_name(tz_name);
     let ambiguous_zdt = match pieces.to_time_zone().unwrap_or_else(|_| Some(system_tz)) {
         Some(tz) => match pieces.to_numeric_offset() {
@@ -180,6 +181,48 @@ pub fn parse_datetime_string_add_nanos_optionally(
     span: NuSpan,
     jiff_span: Option<JiffSpan>,
 ) -> Result<Zoned, LabeledError> {
+    /*let date_time = parse_datetime(s).map_err(|err| {
+        LabeledError::new(err.to_string()).with_label(
+            format!(
+                "Could not parse datetime string with parse_datetime: {:?}",
+                s
+            ),
+            span,
+        )
+    })?;
+    // If nanos are found, add them to the date
+    if let Some(nanos) = duration_nanos {
+        let date_plus_duration = date_time
+            .checked_add(nanos.nanoseconds())
+            .map_err(|err| LabeledError::new(err.to_string()))?;
+        // eprintln!("Date + Duration: {:?}", date_plus_duration);
+
+        // let zdt = date_plus_duration
+        //     .to_zoned(local_tz)
+        //     .map_err(|err| LabeledError::new(err.to_string()))?;
+        // eprintln!("Zoned: {:?}", zdt);
+
+        // let zdt = date_plus_duration.to_zoned(local_tz);
+        // Ok(zdt)
+        return Ok(date_plus_duration);
+        // Ok(date_plus_duration.to_zoned(tz))
+    } else if let Some(jiff_span) = jiff_span {
+        let zdt = date_time
+            .checked_add(jiff_span)
+            .map_err(|err| LabeledError::new(err.to_string()))?;
+        return Ok(zdt);
+    } else {
+        // This is converting all dates to the current timezone, which is wrong
+        // let zdt = date_time
+        //     .to_zoned(local_tz)
+        //     .map_err(|err| LabeledError::new(err.to_string()))?;
+
+        // let zdt = date_time.to_zoned(local_tz);
+        // Ok(zdt)
+        return Ok(date_time);
+        // Ok(date_time.to_zoned(tz))
+    }*/
+
     // dbg!(s);
     // let local_now = Zoned::now();
     // let local_tz = local_now.time_zone().clone();
